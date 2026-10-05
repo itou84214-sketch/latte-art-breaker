@@ -1,5 +1,8 @@
 # Latte Art Breaker
-<img width="1919" height="1079" alt="image" src="https://github.com/user-attachments/assets/2f7527f0-a72a-4079-868b-1a471da5c7cb" />
+
+
+<img width="1372" height="875" alt="スクリーンショット 2026-10-05 140442" src="https://github.com/user-attachments/assets/c1c12ae7-32c3-4991-b364-13c830b5892e" />
+
 
 **▶ 動かす … https://latte-art-breaker-ed645a8f.s3.ap-northeast-1.amazonaws.com/index.html**
 
@@ -50,6 +53,12 @@ latte-art/
 ---
 
 ## 2. ラテアートの作りかた
+
+
+
+<img width="1128" height="624" alt="スクリーンショット 2026-10-05 140540" src="https://github.com/user-attachments/assets/46a331cc-fd18-4d03-9582-03a9a84be930" />
+
+
 
 **画像を貼っているのではなく、数式で描いています。**
 
@@ -131,6 +140,12 @@ python makeart.py 手描き.jpg art/leaf.png --invert   # 白と黒が逆のと�
 注ぎ終わったあとに指で描き足すこともできます。
 
 ### 自分で描く（いちばん下の杯）
+
+
+
+<img width="1146" height="765" alt="スクリーンショット 2026-10-05 140716" src="https://github.com/user-attachments/assets/944c3cd6-2d25-4ba0-a9db-9df1bb71af8f" />
+
+
 
 こちらは別の作りです。**注ぎ口を指に繋いだ流体ストローク**（`FRAG_STROKE`）で、
 
