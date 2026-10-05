@@ -1,4 +1,5 @@
 # Latte Art Breaker
+<img width="1919" height="1079" alt="image" src="https://github.com/user-attachments/assets/2f7527f0-a72a-4079-868b-1a471da5c7cb" />
 
 **▶ 動かす … https://latte-art-breaker-ed645a8f.s3.ap-northeast-1.amazonaws.com/index.html**
 
