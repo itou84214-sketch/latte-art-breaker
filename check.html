@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<title>どの絵をどの杯に ｜ Latte Art Breaker</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@400;500&family=Zen+Maru+Gothic:wght@500;700&display=swap">
+<style>
+:root{
+  --bg:#0d0907; --ink:#f2e8dc; --dim:#a08f80; --accent:#c98a4b;
+  --card:#17100b; --line:rgba(242,232,220,.14);
+  --serif:"Hiragino Mincho ProN","Yu Mincho","Noto Serif JP",serif;
+  --ui:"Zen Maru Gothic","Hiragino Maru Gothic ProN","Yu Gothic UI",system-ui,sans-serif;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--ui);line-height:1.9;padding:0 16px}
+.wrap{max-width:70rem;margin:0 auto;padding-block:clamp(2rem,6vh,3.5rem)}
+h1{margin:0 0 .4rem;font-family:var(--serif);font-weight:400;font-size:clamp(1.5rem,4.5vw,2.4rem);letter-spacing:.06em}
+.lede{margin:0 0 2rem;color:var(--dim);font-size:.92rem;max-width:44rem}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(15rem,1fr));gap:1.4rem}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;overflow:hidden;display:flex;flex-direction:column}
+.card figure{margin:0;background:#120c08;display:flex;align-items:center;justify-content:center;padding:.6rem}
+.card img{display:block;width:100%;max-width:100%;height:auto;aspect-ratio:1/1;object-fit:contain}
+.card .meta{padding:.9rem 1rem 1.1rem;border-top:1px solid var(--line)}
+.tag{display:inline-block;font-weight:700;font-size:1.5rem;letter-spacing:.1em;color:var(--accent);line-height:1}
+.now{margin:.5rem 0 0;font-size:.8rem;color:var(--dim)}
+.now b{color:var(--ink);font-weight:700}
+.file{margin:.25rem 0 0;font-size:.72rem;color:var(--dim);font-family:ui-monospace,monospace}
+.ask{margin:2.4rem 0 0;padding:1.3rem 1.4rem;border:2px dashed rgba(201,138,75,.4);border-radius:12px}
+.ask h2{margin:0 0 .6rem;font-size:1rem;letter-spacing:.06em}
+.ask p{margin:0 0 .8rem;font-size:.88rem;color:var(--dim)}
+.ask pre{margin:0;padding:.9rem 1rem;background:#120c08;border-radius:8px;overflow-x:auto;
+  font-family:ui-monospace,monospace;font-size:.86rem;line-height:2;color:var(--ink)}
+.back{display:inline-block;margin-top:2rem;color:var(--accent);font-size:.85rem}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>どの絵をどの杯に入れますか</h1>
+<p class="lede">
+  いま実際にサイトで使われている 4 枚です。白いところがミルク、黒いところがコーヒーで、
+  <b>カップの中でもこの見え方になります</b>。どれがどの杯に入るべきか、記号で教えてください。
+</p>
+
+<div class="grid">
+
+  <div class="card">
+    <figure><img src="art/a.png?c=1" alt="絵 A"></figure>
+    <div class="meta">
+      <span class="tag">A</span>
+      <p class="now">いまの配置 … <b>いちばん上の大きなカップ</b></p>
+      <p class="file">art/a.png</p>
+    </div>
+  </div>
+
+  <div class="card">
+    <figure><img src="art/b.png?c=1" alt="絵 B"></figure>
+    <div class="meta">
+      <span class="tag">B</span>
+      <p class="now">いまの配置 … <b>02 白鳥</b></p>
+      <p class="file">art/b.png</p>
+    </div>
+  </div>
+
+  <div class="card">
+    <figure><img src="art/c.png?c=1" alt="絵 C"></figure>
+    <div class="meta">
+      <span class="tag">C</span>
+      <p class="now">いまの配置 … <b>01 リーフ</b></p>
+      <p class="file">art/c.png</p>
+    </div>
+  </div>
+
+  <div class="card">
+    <figure><img src="art/d.png?c=1" alt="絵 D"></figure>
+    <div class="meta">
+      <span class="tag">D</span>
+      <p class="now">いまの配置 … <b>03 ハートリーフ</b></p>
+      <p class="file">art/d.png</p>
+    </div>
+  </div>
+
+</div>
+
+<div class="ask">
+  <h2>この 4 行をコピーして 記号だけ書き換えて送ってください</h2>
+  <p>
+    杯の見出し（リーフ／白鳥／ハートリーフ）も変えたい場合は、そのまま日本語で書き添えてください。
+  </p>
+<pre>いちばん上 = A
+01 = C
+02 = B
+03 = D</pre>
+</div>
+
+<a class="back" href="index.html">← サイトへ戻る</a>
+
+</div>
+</body>
+</html>

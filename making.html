@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>裏話：このサイトの作られかた ｜ Latte Art Breaker</title>
+<meta name="description" content="Latte Art Breaker が AWS のどこに置かれ、なぜ公開URLが2つあるのか。実測した数字つきの構成図。">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Noto+Sans+JP:wght@400;500;700&family=Noto+Serif+JP:wght@400;500&display=swap">
+<style>
+/* =========================================================
+   裏話ページ。配色は style.css の :root に合わせてあります
+   ========================================================= */
+:root {
+  --bg:      #0d0907;
+  --surface: #17100b;
+  --sunk:    #120c08;
+  --ink:     #f2e8dc;
+  --muted:   #a08f80;
+  --line:    rgba(242, 232, 220, 0.13);
+  --line-2:  rgba(242, 232, 220, 0.32);
+  --accent:  #c98a4b;
+  --warn:    #dd7f68;
+
+  --serif: "Noto Serif JP", "Hiragino Mincho ProN", "Yu Mincho", serif;
+  --sans:  "Noto Sans JP", "Hiragino Sans", "Yu Gothic UI", system-ui, sans-serif;
+  --mono:  "JetBrains Mono", ui-monospace, SFMono-Regular, Consolas, monospace;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: 15px;
+  line-height: 1.8;
+  -webkit-font-smoothing: antialiased;
+}
+
+.wrap {
+  max-width: 78rem;
+  margin: 0 auto;
+  padding-block: clamp(1.5rem, 4vw, 3rem);
+  padding-left: max(1rem, 3vw);
+  padding-right: max(1rem, 3vw);
+  display: grid;
+  gap: clamp(1.5rem, 3vw, 2.25rem);
+}
+
+/* ---------- 戻る ---------- */
+.back {
+  justify-self: start;
+  display: inline-flex;
+  align-items: center;
+  gap: .5rem;
+  padding: .42rem .9rem;
+  border: 1px solid var(--line-2);
+  border-radius: 999px;
+  color: var(--ink);
+  text-decoration: none;
+  font-size: .8rem;
+  transition: background .2s, border-color .2s;
+}
+.back:hover { background: rgba(255,255,255,.06); border-color: var(--accent); }
+
+/* ---------- 見出し ---------- */
+.head { display: grid; gap: .55rem; }
+.eyebrow {
+  margin: 0;
+  font-size: .7rem;
+  font-weight: 700;
+  letter-spacing: .24em;
+  color: var(--accent);
+}
+h1 {
+  margin: 0;
+  font-family: var(--serif);
+  font-weight: 500;
+  font-size: clamp(1.55rem, 3.6vw, 2.3rem);
+  letter-spacing: .04em;
+  line-height: 1.35;
+  text-wrap: balance;
+}
+.lede { margin: 0; max-width: 62ch; color: var(--muted); font-size: .95rem; }
+.meta {
+  display: flex; flex-wrap: wrap; gap: .3rem .9rem;
+  margin: 0; padding: 0; list-style: none;
+  font-family: var(--mono); font-size: .75rem; color: var(--muted);
+}
+.meta li { display: flex; gap: .4rem; align-items: baseline; }
+.meta b { color: var(--ink); font-weight: 500; }
+
+/* ---------- 図 ---------- */
+figure { margin: 0; display: grid; gap: .7rem; }
+.scroller {
+  overflow-x: auto;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: .5rem;
+}
+.scroller svg { display: block; width: 100%; min-width: 1040px; height: auto; }
+figcaption { color: var(--muted); font-size: .84rem; max-width: 72ch; }
+.swipe { display: none; font-size: .75rem; color: var(--muted); font-family: var(--mono); }
+@media (max-width: 1080px) { .swipe { display: block; } }
+
+/* SVG の見た目 */
+.n-box  { fill: var(--surface); stroke: var(--line-2); stroke-width: 1.4; }
+.n-sunk { fill: var(--sunk);    stroke: var(--line);   stroke-width: 1.2; }
+.n-key  { fill: var(--surface); stroke: var(--accent); stroke-width: 2; }
+.zone   { fill: none; stroke: var(--line-2); stroke-width: 1.4; stroke-dasharray: 7 6; }
+.edge     { fill: none; stroke: var(--line-2); stroke-width: 1.8; }
+.edge-key { fill: none; stroke: var(--accent);  stroke-width: 2.2; }
+.edge-dot { fill: none; stroke: var(--line-2); stroke-width: 1.4; stroke-dasharray: 4 5; }
+.t-h    { fill: var(--ink);    font-family: var(--sans); font-size: 17px; font-weight: 700; }
+.t-b    { fill: var(--ink);    font-family: var(--sans); font-size: 13px; }
+.t-m    { fill: var(--muted);  font-family: var(--sans); font-size: 12.5px; }
+.t-code { fill: var(--muted);  font-family: var(--mono); font-size: 11.5px; }
+.t-edge { fill: var(--ink);    font-family: var(--mono); font-size: 12px; font-weight: 500; }
+.t-key  { fill: var(--accent); font-family: var(--sans); font-size: 12.5px; font-weight: 700; }
+.t-warn { fill: var(--warn);   font-family: var(--sans); font-size: 12.5px; font-weight: 700; }
+.t-zone { fill: var(--muted);  font-family: var(--mono); font-size: 12px; letter-spacing: .06em; }
+
+/* ---------- 2つのURL ---------- */
+.urls { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(19rem, 1fr)); }
+.url {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 1rem 1.1rem;
+  display: grid; gap: .55rem; align-content: start;
+}
+.url--key { border-color: var(--accent); }
+.url h3 {
+  margin: 0; font-size: .95rem; font-weight: 700;
+  display: flex; align-items: baseline; gap: .6rem; flex-wrap: wrap;
+}
+.tag {
+  font-family: var(--mono); font-size: .67rem; letter-spacing: .08em;
+  padding: .14em .55em; border-radius: 999px;
+  border: 1px solid currentColor; font-weight: 500;
+}
+.tag--key { color: var(--accent); }
+.tag--plain { color: var(--muted); }
+.addr {
+  margin: 0;
+  font-family: var(--mono); font-size: .77rem; line-height: 1.65;
+  background: var(--sunk); border-radius: 6px;
+  padding: .55rem .65rem; word-break: break-all;
+}
+.url ul { margin: 0; padding-left: 1.1rem; display: grid; gap: .3rem; font-size: .84rem; color: var(--muted); }
+.url li b { color: var(--ink); font-weight: 500; }
+
+/* ---------- パネル ---------- */
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  overflow: hidden;
+}
+.panel > h2 {
+  margin: 0; padding: .85rem 1.1rem;
+  border-bottom: 1px solid var(--line);
+  font-family: var(--serif); font-weight: 500;
+  font-size: 1.02rem; letter-spacing: .05em;
+}
+.panel > .body { padding: 1rem 1.1rem; }
+
+.tablewrap { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-size: .85rem; }
+th, td { text-align: left; padding: .6rem .8rem; border-bottom: 1px solid var(--line); vertical-align: top; }
+thead th { font-size: .71rem; letter-spacing: .1em; color: var(--muted); font-weight: 700; white-space: nowrap; }
+tbody tr:last-child th, tbody tr:last-child td { border-bottom: 0; }
+tbody th { font-weight: 500; white-space: nowrap; }
+td.num { font-family: var(--mono); font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
+code {
+  font-family: var(--mono); font-size: .88em;
+  background: var(--sunk); padding: .1em .4em; border-radius: 4px; word-break: break-all;
+}
+.ok { color: var(--accent); font-weight: 700; }
+
+.notes { display: grid; gap: .8rem; grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr)); }
+.note { border-left: 2px solid var(--accent); padding: .1rem 0 .1rem .8rem; font-size: .85rem; margin: 0; }
+.note b { display: block; font-size: .8rem; letter-spacing: .04em; margin-bottom: .1rem; }
+.note span { color: var(--muted); }
+
+footer {
+  color: var(--muted); font-size: .78rem;
+  border-top: 1px solid var(--line); padding-top: 1.1rem;
+  display: grid; gap: .8rem;
+}
+footer a { color: var(--accent); }
+
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+
+  <a class="back" href="index.html">← カップに戻る</a>
+
+  <header class="head">
+    <p class="eyebrow">MAKING OF</p>
+    <h1>このサイトは、どうやって作られたのか</h1>
+    <p class="lede">
+      AWS 側にあるのは S3 バケット 1 つだけ。サーバーでは何も動かしていません。
+      ラテアートの流体計算は、すべて閲覧者のブラウザの GPU で走ります。
+    </p>
+    <ul class="meta">
+      <li>リージョン <b>ap-northeast-1</b></li>
+      <li>公開ファイル <b>11 点 / 7.6 MB</b></li>
+      <li>ビルド工程 <b>なし</b></li>
+      <li>HTTP 実測 <b>2026-10-01</b></li>
+    </ul>
+  </header>
+
+  <figure>
+    <p class="swipe">← 図は横にスクロールできます →</p>
+    <div class="scroller">
+      <svg viewBox="0 148 1160 486" role="img"
+           aria-label="制作者のPCから aws s3 cp で S3 バケットへファイルを上げ、S3 が REST エンドポイント（HTTPS・ルートは403）とウェブサイトエンドポイント（HTTPのみ）の2つの名前で配信し、閲覧者のブラウザが受け取って WebGL2 で 5 杯ぶんの流体を計算する構成図。">
+        <defs>
+          <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M 0 0 L 10 5 L 0 10 z" fill="rgba(242,232,220,0.32)"/>
+          </marker>
+          <marker id="ahk" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M 0 0 L 10 5 L 0 10 z" fill="#c98a4b"/>
+          </marker>
+        </defs>
+
+        <rect class="zone" x="254" y="166" width="612" height="342" rx="12"/>
+        <text class="t-zone" x="274" y="194">AWS ap-northeast-1</text>
+
+        <rect class="n-box" x="20" y="226" width="170" height="104" rx="9"/>
+        <text class="t-h" x="40" y="258">制作者の PC</text>
+        <text class="t-m" x="40" y="282">HTML / CSS / JS を</text>
+        <text class="t-m" x="40" y="304">直接編集。ビルドなし</text>
+
+        <line class="edge" x1="190" y1="278" x2="280" y2="278" marker-end="url(#ah)"/>
+        <text class="t-edge" x="235" y="266" text-anchor="middle">aws s3 cp</text>
+        <text class="t-m"    x="235" y="298" text-anchor="middle">5 ファイル</text>
+
+        <rect class="n-box" x="286" y="226" width="300" height="104" rx="9"/>
+        <text class="t-h"    x="306" y="258">Amazon S3</text>
+        <text class="t-b"    x="306" y="282">静的ウェブサイトホスティング</text>
+        <text class="t-code" x="306" y="306">latte-art-breaker-ed645a8f</text>
+
+        <line class="edge-dot" x1="436" y1="330" x2="436" y2="374"/>
+
+        <rect class="n-sunk" x="286" y="374" width="300" height="96" rx="9"/>
+        <text class="t-b" x="306" y="400">バケットポリシー</text>
+        <text class="t-m" x="306" y="422">誰でも GetObject だけ可（書き込み不可）</text>
+        <text class="t-m" x="306" y="444">Block Public Access は 4 項目とも OFF</text>
+
+        <line class="edge-key" x1="586" y1="257" x2="648" y2="257" marker-end="url(#ahk)"/>
+        <polyline class="edge" points="586,300 620,300 620,407 648,407" marker-end="url(#ah)"/>
+
+        <rect class="n-key" x="654" y="202" width="190" height="110" rx="9"/>
+        <text class="t-b"    x="672" y="230">REST エンドポイント</text>
+        <text class="t-code" x="672" y="252">…s3.ap-northeast-1…</text>
+        <text class="t-key"  x="672" y="276">HTTPS で読める</text>
+        <text class="t-m"    x="672" y="297">ルート / は 403（実測）</text>
+
+        <rect class="n-box" x="654" y="352" width="190" height="110" rx="9"/>
+        <text class="t-b"    x="672" y="380">ウェブサイト用</text>
+        <text class="t-code" x="672" y="402">…s3-website-…</text>
+        <text class="t-b"    x="672" y="426">/ でトップが開く</text>
+        <text class="t-warn" x="672" y="447">HTTPS は不可（実測）</text>
+
+        <line class="edge-key" x1="844" y1="257" x2="914" y2="257" marker-end="url(#ahk)"/>
+        <text class="t-edge" x="879" y="245" text-anchor="middle">GET</text>
+        <line class="edge" x1="844" y1="407" x2="914" y2="407" marker-end="url(#ah)"/>
+        <text class="t-edge" x="879" y="395" text-anchor="middle">GET</text>
+
+        <rect class="n-box" x="920" y="176" width="212" height="306" rx="9"/>
+        <text class="t-h" x="940" y="208">閲覧者のブラウザ</text>
+        <text class="t-m" x="940" y="234">ログイン不要</text>
+        <line class="edge-dot" x1="940" y1="252" x2="1112" y2="252"/>
+        <text class="t-b" x="940" y="278">受け取る</text>
+        <text class="t-m" x="940" y="300">HTML / CSS / JS / MP3</text>
+        <text class="t-b" x="940" y="332">そのあと自前で</text>
+        <text class="t-m" x="940" y="354">WebGL2 を 5 つ起動（1 杯 = 1 つ）</text>
+        <text class="t-m" x="940" y="376">GPU で流体を毎コマ計算</text>
+        <text class="t-m" x="940" y="398">触れた杯だけ動かす</text>
+        <line class="edge-dot" x1="940" y1="418" x2="1112" y2="418"/>
+        <text class="t-key" x="940" y="444">計算は AWS 側では一切しない</text>
+        <text class="t-m"   x="940" y="466">S3 はファイルを渡すだけ</text>
+
+        <line class="edge" x1="1026" y1="482" x2="1026" y2="534" marker-end="url(#ah)"/>
+        <text class="t-edge" x="1038" y="512" text-anchor="start">フォント取得</text>
+
+        <rect class="n-sunk" x="920" y="540" width="212" height="76" rx="9"/>
+        <text class="t-b" x="940" y="568">Google Fonts</text>
+        <text class="t-m" x="940" y="590">AWS の外。Noto Serif / Sans JP</text>
+      </svg>
+    </div>
+    <figcaption>
+      矢印の上の文字が、そこで起きていることです。番号を振って説明を下にまとめると目が往復するので、
+      説明はすべて図の中に置いてあります。403 と HTTPS 不可は <code>curl</code> で実際に確かめた結果です。
+    </figcaption>
+  </figure>
+
+  <section class="urls">
+    <article class="url url--key">
+      <h3>REST エンドポイント <span class="tag tag--key">人に見せるならこちら</span></h3>
+      <p class="addr">https://latte-art-breaker-ed645a8f.s3.ap-northeast-1.amazonaws.com/index.html</p>
+      <ul>
+        <li><b>HTTPS が使える。</b>鍵マークが付くので、ブラウザが警告を出しません</li>
+        <li><b>ルートは開けない。</b><code>/</code> を叩くと 403 が返るため、<code>/index.html</code> まで必要</li>
+        <li>全ファイル実測で 200。Content-Type も意図どおり</li>
+      </ul>
+    </article>
+    <article class="url">
+      <h3>ウェブサイトエンドポイント <span class="tag tag--plain">自分で開くとき</span></h3>
+      <p class="addr">http://latte-art-breaker-ed645a8f.s3-website-ap-northeast-1.amazonaws.com/</p>
+      <ul>
+        <li><b>ルートでトップが開く。</b>静的ウェブサイトホスティングが <code>index.html</code> を返します</li>
+        <li><b>HTTPS では繋がらない。</b>証明書が無いため、<code>https://</code> を付けると接続そのものが失敗します</li>
+        <li>短いので、自分で開く分にはこちらが楽</li>
+      </ul>
+    </article>
+  </section>
+
+  <section class="panel" id="p-files">
+    <h2>配信しているファイル（2026-10-01 実測）</h2>
+    <div class="tablewrap">
+      <table>
+        <thead>
+          <tr>
+            <th scope="col">ファイル</th>
+            <th scope="col">Content-Type</th>
+            <th scope="col">Cache-Control</th>
+            <th scope="col" style="text-align:right">サイズ</th>
+            <th scope="col">状態</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><th scope="row"><code>index.html</code></th><td><code>text/html; charset=utf-8</code></td><td><code>no-cache</code></td><td class="num">11,133 B</td><td class="ok">200</td></tr>
+          <tr><th scope="row"><code>style.css</code></th><td><code>text/css; charset=utf-8</code></td><td><code>public, max-age=300</code></td><td class="num">22,773 B</td><td class="ok">200</td></tr>
+          <tr><th scope="row"><code>latte.js</code></th><td><code>text/javascript; charset=utf-8</code></td><td><code>public, max-age=300</code></td><td class="num">60,972 B</td><td class="ok">200</td></tr>
+          <tr><th scope="row"><code>bgm.mp3</code></th><td><code>audio/mpeg</code></td><td><code>public, max-age=86400</code></td><td class="num">6,203,098 B</td><td class="ok">200</td></tr>
+          <tr><th scope="row"><code>check.html</code></th><td><code>text/html; charset=utf-8</code></td><td><code>no-cache</code></td><td class="num">4,277 B</td><td class="ok">200</td></tr>
+          <tr><th scope="row"><code>art/</code> の 4 点</th><td><code>image/png</code></td><td><code>public, max-age=86400</code></td><td class="num">253,154 B</td><td class="ok">200</td></tr>
+          <tr><th scope="row"><code>making.html</code></th><td><code>text/html; charset=utf-8</code></td><td><code>no-cache</code></td><td class="num">22,304 B</td><td style="color:var(--muted)">この頁</td></tr>
+          <tr><th scope="row">合計</th><td colspan="2" style="color:var(--muted)">圧縮なしで、保存したまま返します</td><td class="num"><b>6,577,711 B</b></td><td style="color:var(--muted)">7 行</td></tr>
+        </tbody>
+      </table>
+      <p style="margin:.7rem 0 0;font-size:.82rem;color:var(--muted)">このページを 1 枚にした <code>architecture.png</code>（3360×5392、約 1.34 MB）も同じ場所に置いてあります。これは<b>この表を含む画像</b>なので、正確なバイト数を表に書くと数字が決まりません（書き換えるたび PNG の圧縮結果が変わる）。ここだけ概数にしてあります。</p>
+    </div>
+  </section>
+
+  <section class="panel" id="p-made">
+    <h2>作ったあとに作り変えたところ</h2>
+    <div class="body notes">
+      <p class="note"><b>模様は数式から手描きへ</b><span>最初は三日月を積み上げる距離関数でラテアートを描いていました。
+        いまは手描きの絵を <code>makeart.py</code> で 768×768 の白黒の「型」に焼き、<code>data-art</code> で杯に結びつけています。
+        数式版の関数は残してあり、型が読めなかったときの受け皿になります。</span></p>
+      <p class="note"><b>絵と紙の見分けかた</b><span>透明つき PNG は透明度をそのまま使います。
+        持たない画像は輝度を大津の二値化でしきい分けし、<b>画像のふちを「紙」とみなして反対側を絵</b>とします。
+        だから白い紙に黒で描いても、反転指定は要りません。</span></p>
+      <p class="note"><b>訪れた人も絵を入れられる</b><span>いちばん下の杯だけ、手持ちの画像を注げます。
+        処理は <code>makeart.py</code> と同じ手順をブラウザの中で走らせているだけで、
+        画像はどこにも送信されません。<code>localStorage</code> に残るので開き直しても消えません。</span></p>
+      <p class="note"><b>キャッシュで 3 回つまずいた</b><span>絵の PNG に <code>max-age=86400</code> を付けたため、
+        差し替えてもブラウザが取りに来ませんでした。いまは <code>no-cache</code> にし、
+        <code>?v=</code> を付けて URL 自体を変えています。</span></p>
+      <p class="note"><b>見た目の作り直し</b><span>細い枠線・半透明のすりガラス・システムのフォントという組み合わせをやめ、
+        べた塗り＋ずらした硬い影＋丸ゴシックに揃えました。下のつまみも、彫った溝と角砂糖のつまみに作り替えています。</span></p>
+      <p class="note"><b>目で見ずに確かめる</b><span>制作中は画面を見られないので、
+        ヘッドレスのブラウザで <code>gl.readPixels</code> を叩いて絵柄を文字に起こし、
+        要素の座標を実測して重なりや折り返しを確認しています。このページの数字も、すべて実ファイルから測ったものです。</span></p>
+    </div>
+  </section>
+
+  <section class="panel" id="p-notes">
+    <h2>この構成について確認できていること</h2>
+    <div class="body notes">
+      <p class="note"><b>費用はほぼゼロ</b><span>Cost Explorer の実測で 8 月 <code>0.0000000006 USD</code>、9 月 1〜10 日 <code>-0.0000000002 USD</code>。無料枠の中です（2026-09-09 時点）。</span></p>
+      <p class="note"><b>CloudFront は入れていない</b><span>入れれば「短い URL ＋ HTTPS」が両立し、圧縮も効きます。代わりに配信開始まで 5〜15 分かかります。</span></p>
+      <p class="note"><b>バケットは読み取り専用で公開</b><span>バケットポリシーは <code>s3:GetObject</code> の 1 文だけ。匿名での <code>PUT</code>／<code>DELETE</code>／一覧取得は、実際に叩いて 3 つとも <code>403</code> を確認しました（2026-10-01）。</span></p>
+      <p class="note"><b>ページは鍵を持ちません</b><span>配信しているのは静的ファイルだけ。JavaScript に認証情報は無く、ブラウザから AWS の API は一切呼びません。<code>fetch</code> も <code>XMLHttpRequest</code> も 0 箇所です。</span></p>
+      <p class="note"><b>ブラウザ側の必要条件</b><span>WebGL2 と <code>EXT_color_buffer_float</code>。無い環境では、カップの代わりに理由を書いた文が出ます。</span></p>
+      <p class="note"><b>更新は数行</b><span><code>aws s3 cp</code> を並べるだけ。<code>index.html</code> は <code>no-cache</code> なので、置いた瞬間から反映されます。</span></p>
+      <p class="note"><b>重いのは音源</b><span>7.6 MB のうち 6.2 MB が <code>bgm.mp3</code>、1.34 MB が構成図の PNG、0.25 MB が手描きの型 4 点。<code>preload="metadata"</code> なので、開いた時点では本体を落としません。</span></p>
+    </div>
+  </section>
+
+  <footer>
+    <p style="margin:0">
+      HTTP の応答・サイズ・Content-Type は 2026-10-01 に <code>curl</code> で実測。
+      費用は 2026-09-09 時点の AWS Cost Explorer の値です。
+    </p>
+    <p style="margin:0"><a href="index.html">← カップに戻る</a></p>
+  </footer>
+
+</div>
+
+</body>
+</html>

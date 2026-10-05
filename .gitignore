@@ -1,0 +1,18 @@
+# 音源は配布しません
+# 手持ちの曲を bgm.mp3 としてこのフォルダに置くとボタンが出ます。
+# 置かなければ BGM の区画ごと出ないので、サイトは問題なく動きます。
+*.mp3
+*.m4a
+*.ogg
+
+# 動作確認で作った一時ファイル
+_probe.html
+_shot.html
+_h.html
+_*.html
+art/_*.png
+
+# OS が勝手に作るもの
+Thumbs.db
+desktop.ini
+.DS_Store

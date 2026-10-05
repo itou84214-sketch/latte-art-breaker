@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>こわしていい ｜ Latte Art Breaker</title>
+<meta name="description" content="注ぐところから計算したラテアートを、指でかき混ぜて崩せる WebGL のページ。自分の手描きの絵を注ぐこともできます。">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@400;500&family=Zen+Maru+Gothic:wght@500;700&display=swap">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- ============ 見出し（大きい1杯・チュートリアル） ============ -->
+<header class="hero" data-cupbox>
+  <canvas data-cup data-hero="1" data-pattern="0" data-art="art/a.png?v=5"
+          data-spoon="1" data-sugar="1"
+          aria-label="手描きのロゼッタが入ったカップ。ドラッグするとかき混ざります。"></canvas>
+  <p class="gl-note" hidden></p>
+
+  <div class="hero__copy">
+    <p class="hero__eyebrow">Latte Art Breaker</p>
+    <h1 class="hero__title">こわして、<br>いいんだよ。</h1>
+    <p class="hero__lead">
+      きれいに描けた一杯を、指でぐしゃぐしゃにする。<br>
+      それだけのために作ったページです。
+    </p>
+  </div>
+
+  <div class="hero__how">
+    <svg class="hero__swirl" viewBox="0 0 124 62" aria-hidden="true">
+      <path d="M8 46 C 26 10, 46 58, 62 26 C 72 6, 88 32, 104 24"/>
+      <polygon points="114 21, 100 17, 103 29"/>
+    </svg>
+    <p class="hero__howtitle">カップの上をなぞる</p>
+    <p class="hero__howsub">
+      指でも、マウスでも。動かした分だけ崩れます。<br>
+      手を止めれば、そこで止まります。
+    </p>
+  </div>
+</header>
+
+<main>
+
+<!-- ------------ 画面下のつまみの説明 ------------ -->
+<section class="guide">
+  <div class="guide__inner">
+    <p class="guide__eyebrow">画面のいちばん下のバー</p>
+    <h2 class="guide__title">2 つのつまみで手ざわりが変わります</h2>
+    <dl class="guide__list">
+      <div class="guide__row">
+        <dt>混ざりやすさ</dt>
+        <dd>ほかの液体とどれくらい混ざるか</dd>
+      </div>
+      <div class="guide__row">
+        <dt>ゆるさ</dt>
+        <dd>ラテがどれくらいドロッとせず さらさら動くか</dd>
+      </div>
+    </dl>
+    <p class="guide__note">どちらも、この下に並ぶ 4 つのカップすべてに同時に効きます。</p>
+  </div>
+</section>
+
+<!-- ------------ BGM（蓄音機） ------------ -->
+<section class="jazz" hidden>
+  <button type="button" id="btn-bgm" class="jazz__btn" aria-pressed="false">
+    <span class="jazz__art" aria-hidden="true">
+      <span class="jazz__horn">🎺</span>
+      <span class="jazz__notes"><span>♪</span><span>♫</span><span>♬</span><span>♪</span></span>
+    </span>
+    <span class="jazz__words">
+      <span class="jazz__title" data-bgm-title>いい感じのジャズ流しますか？</span>
+      <span class="jazz__sub" data-bgm-sub>押すと流れます</span>
+    </span>
+  </button>
+</section>
+
+<!-- ------------ 1杯目：リーフ（右） ------------ -->
+<section class="stage" data-cupbox>
+  <div class="stage__cup">
+    <canvas data-cup data-pattern="0" data-art="art/c.png?v=5" data-spoon="1" data-sugar="1"
+            aria-label="手描きのリーフが入ったカップ。ドラッグするとかき混ざります。"></canvas>
+    <p class="gl-note" hidden></p>
+  </div>
+  <div class="stage__text">
+    <p class="stage__num">01</p>
+    <h2 class="stage__title">リーフ</h2>
+    <p class="stage__body">
+      ピッチャーを左右に振りながら手前へ進めると、注ぎ口のまわりの泡が外へ押しのけられます。
+      その押しのけられた分が三日月として残り、積み重なって葉になります。
+    </p>
+    <div class="stage__btns">
+      <button type="button" class="btn" data-act="spoon">スプーンで回す</button>
+      <button type="button" class="btn btn--primary" data-act="reset">注ぎ直す</button>
+    </div>
+
+  </div>
+</section>
+
+<div class="link link--rl" aria-hidden="true">
+  <svg viewBox="0 0 200 100" preserveAspectRatio="none">
+    <path d="M152 2 C152 52, 48 48, 48 98" vector-effect="non-scaling-stroke"/>
+    <circle cx="48" cy="98" r="3" vector-effect="non-scaling-stroke"/>
+  </svg>
+</div>
+
+<!-- ------------ 2杯目：白鳥・抹茶（左） ------------ -->
+<section class="stage stage--flip" data-cupbox>
+  <div class="stage__cup">
+    <canvas data-cup data-pattern="1" data-art="art/b.png?v=5" data-matcha="1" data-sugar="1"
+            aria-label="抹茶ラテに描かれた手描きの白鳥。ドラッグするとかき混ざります。"></canvas>
+    <p class="gl-note" hidden></p>
+  </div>
+  <div class="stage__text">
+    <p class="stage__num">02</p>
+    <h2 class="stage__title">白鳥</h2>
+    <p class="stage__body">
+      羽の振り方はリーフとまったく同じです。振り終えたあと、注ぎ口を細く絞って
+      一本だけ線を引くと首になります。抹茶にすると、白がよく映えます。
+    </p>
+    <div class="stage__btns">
+      <button type="button" class="btn" data-act="spoon">スプーンで回す</button>
+      <button type="button" class="btn btn--primary" data-act="reset">注ぎ直す</button>
+    </div>
+
+  </div>
+</section>
+
+<div class="link link--lr" aria-hidden="true">
+  <svg viewBox="0 0 200 100" preserveAspectRatio="none">
+    <path d="M48 2 C48 52, 152 48, 152 98" vector-effect="non-scaling-stroke"/>
+    <circle cx="152" cy="98" r="3" vector-effect="non-scaling-stroke"/>
+  </svg>
+</div>
+
+<!-- ------------ 3杯目：ハートリーフ（右） ------------ -->
+<section class="stage" data-cupbox>
+  <div class="stage__cup">
+    <canvas data-cup data-pattern="2" data-art="art/d.png?v=5" data-spoon="1"
+            aria-label="手描きのハートのラテアート。ドラッグするとかき混ざります。"></canvas>
+    <p class="gl-note" hidden></p>
+  </div>
+  <div class="stage__text">
+    <p class="stage__num">03</p>
+    <h2 class="stage__title">ハートリーフ</h2>
+    <p class="stage__body">
+      中に小さく葉を注いでから、まわりを一周ぐるりと回ります。
+      最後に真上から下へ引き抜くと、円が引きずられて下がとがり、ハートになります。
+    </p>
+    <div class="stage__btns">
+      <button type="button" class="btn" data-act="spoon">スプーンで回す</button>
+      <button type="button" class="btn btn--primary" data-act="reset">注ぎ直す</button>
+    </div>
+
+  </div>
+</section>
+
+<div class="link link--rl" aria-hidden="true">
+  <svg viewBox="0 0 200 100" preserveAspectRatio="none">
+    <path d="M152 2 C152 52, 48 48, 48 98" vector-effect="non-scaling-stroke"/>
+    <circle cx="48" cy="98" r="3" vector-effect="non-scaling-stroke"/>
+  </svg>
+</div>
+
+<!-- ------------ 4杯目：自分で描く（左） ------------ -->
+<section class="stage stage--flip" data-cupbox data-slot="me">
+  <div class="stage__cup">
+    <canvas data-cup data-pattern="-1" data-spoon="1" data-sugar="1"
+            aria-label="まっさらなラテ。ドラッグして自分でラテアートを描けます。"></canvas>
+    <p class="gl-note" hidden></p>
+  </div>
+  <div class="stage__text">
+    <p class="stage__num">04</p>
+    <h2 class="stage__title">自分で描く</h2>
+    <p class="stage__body">
+      注ぎ口をあなたの指に繋いであります。上の3杯とまったく同じ計算です。
+      なぞった跡にミルクが乗り、まわりの泡は外へ押しのけられます。
+      描けたら「崩す」に切り替えて、ぐしゃぐしゃにしてください。
+      描くかわりに、手持ちの画像を注ぐこともできます。
+    </p>
+
+    <div class="seg seg--wide" role="group" aria-label="指の役割">
+      <button type="button" class="seg__btn" data-mode="draw"  aria-pressed="true">描く</button>
+      <button type="button" class="seg__btn" data-mode="erase" aria-pressed="false">消す</button>
+      <button type="button" class="seg__btn" data-mode="stir"  aria-pressed="false">崩す</button>
+    </div>
+
+    <label class="brush">
+      <span>注ぎ口の太さ</span>
+      <input data-brush type="range" min="0.020" max="0.120" step="0.005" value="0.055">
+    </label>
+
+    <div class="stage__btns">
+      <button type="button" class="btn btn--primary" data-act="clear">まっさらにする</button>
+    </div>
+
+    <div class="mine">
+      <p class="mine__lead">もしくは画像を入れてオリジナルのラテアートを作ろう</p>
+      <div class="mine__row">
+        <label class="btn btn--file">画像をえらぶ
+          <input class="vh" type="file" accept="image/*" data-photo>
+        </label>
+      </div>
+      <label class="mine__chk"><input type="checkbox" data-photo-invert> 白と黒が逆のときはここ</label>
+      <p class="mine__note" data-photo-note>紙に描いて撮った写真でも、お絵かきアプリの PNG でも大丈夫です。カップに直接ドラッグしても入ります。入れたあと、そのまま指で描き足せます。消すときは「まっさらにする」。</p>
+    </div>
+  </div>
+</section>
+
+
+<!-- ------------ 裏話への導線 ------------ -->
+<section class="making">
+  <p class="making__eyebrow">MAKING OF</p>
+  <h2 class="making__title">このサイトはどうやって作られたのか</h2>
+  <p class="making__body">
+    AWS のどこに何が置いてあるのか、なぜ公開 URL が 2 つあるのか、費用はいくらか。
+    実際に測った数字つきで、1 枚の図にまとめました。
+  </p>
+  <a class="btn btn--primary btn--lg" href="making.html">構成と裏側を見る →</a>
+</section>
+
+</main>
+
+<!-- ============ 共通のつまみ ============ -->
+<div class="bar" role="group" aria-label="すべての杯に効く設定">
+  <label class="bar__item">
+    <span class="bar__name">混ざりやすさ</span>
+    <input id="rng-strength" type="range" min="0.9" max="1.6" step="0.05" value="1">
+    <output id="out-strength">1</output>
+  </label>
+  <label class="bar__item">
+    <span class="bar__name">ゆるさ</span>
+    <input id="rng-visc" type="range" min="0.05" max="0.475" step="0.005" value="0.26">
+    <output id="out-visc">0.26</output>
+  </label>
+  <label class="chk"><input type="checkbox" id="chk-steam" checked> 湯気</label>
+</div>
+
+<footer class="footer">
+  <p>Latte Art Breaker</p>
+  <p class="footer__sub">WebGL2 / Stable Fluids — ライブラリなし</p>
+</footer>
+
+<!-- BGM：bgm.mp3 をこのフォルダに置くとボタンが出ます -->
+<audio id="bgm" loop preload="metadata">
+  <source src="bgm.mp3" type="audio/mpeg">
+  <source src="bgm.m4a" type="audio/mp4">
+  <source src="bgm.ogg" type="audio/ogg">
+</audio>
+
+<script src="latte.js"></script>
+</body>
+</html>
