@@ -72,38 +72,81 @@
   // ---- 段と枠の数 ---------------------------------------------------------
   //  ブラウザが同時に持てる WebGL は 16 個まで（このページで実測）。
   //  17 個目を作ると、いちばん古いものが黙って壊されます。
-  //  余裕を見て、この机で使う数を決めます。
+  //  1 つ余らせて 15 個までにし、段ごとに割り振ります。
   //   data-lanes  何段にするか（みんなの作品ページは 3、トップは 1）
   //   data-seats  トップのように杯が先にいるページで、使う数を抑える
   var CAP   = parseInt(desk.dataset.seats || '0', 10) || 0;
   var LANES = Math.max(1, parseInt(desk.dataset.lanes || '1', 10) || 1);
 
+  var SCALE = [1, 1.5, 1, 1, 1];  // 2 段目だけ 1.5 倍
+  var PAD   = 14;    // 杯と杯のあいだ。ここを広げると机が空いて見えます
+  var VGAP  = 10;    // 段と段のあいだ（style.css の gap と合わせる）
+  var FOOT  = 36;    // 杯の下（ハートの帯とそのすき間）
+  var TILT  = 1.037; // 2 度ほど傾けるので、席の箱がこれだけ縦に広がる
+
+  // 無造作に置いた感じを出すための、下へのずらし。
+  // 傾けたぶん杯の角が上に出るので、その逃げを先に取ります。
+  // 逃げは杯の大きさに比例します（杯 191px で 3.5px、338px で 6.2px）。
+  // 固定の 6px にしていたころは、トップの帯（杯 338px）で 1.1px 切れていました。
+  function liftBase(cup) { return Math.ceil(cup * 0.0183) + 2; }
+  function liftOf(cup, i) { return liftBase(cup) + ((i * 37) % 4) * 2; }
+  function laneH(cup) { return Math.round(cup * TILT + liftBase(cup) + 6 + FOOT); }
+
   function layout() {
     var vw = Math.max(document.documentElement.clientWidth, 320);
     var vh = Math.max(document.documentElement.clientHeight, 420);
     var narrow = vw < 700;
-    var base = narrow ? 200 : 272;   // 1 枠の幅の下限
-    var cap1 = narrow ? 240 : 360;   // 1 段のときの枠の幅の上限
-    var budget = narrow ? 9 : 12;    // この机で使う WebGL の数
+    var budget = narrow ? 9 : 15;         // この机で使う WebGL の数
     if (CAP) budget = Math.min(budget, CAP);
+    var lanes = Math.max(1, Math.min(LANES, Math.floor(budget / 3)));
+    var i;
 
-    var lanes = Math.max(1, Math.min(LANES, Math.floor(budget / 2)));
-    var per = Math.max(2, Math.floor(budget / lanes));
-
-    // 「見えるぶん ＋ 袖 1 枠ぶん」。袖が無いと、次の一杯が画面の中で現れます。
-    var slot = Math.max(base, Math.ceil(vw / (per - 1)) + 1);
-    if (lanes === 1) slot = Math.min(cap1, slot);
-
-    // 杯の大きさ。段を重ねるので、画面の高さからも頭打ちにします。
-    var cup;
+    // 1 段のとき（トップページ）は、これまでどおり画面幅から決めます
     if (lanes === 1) {
-      cup = slot - 20;
-    } else {
-      var room = (vh * 0.86 - (lanes - 1) * 14) / lanes;
-      cup = Math.min(slot - 24, Math.floor(room / 1.26) - 19);
-      cup = Math.max(120, Math.min(cup, 260));
+      var s1 = Math.max(narrow ? 200 : 272, Math.ceil(vw / (budget - 1)) + 1);
+      s1 = Math.min(narrow ? 240 : 360, s1);
+      var run = budget * s1;
+      var fills = run - s1 >= vw;
+      return { lanes: 1, cup: [s1 - 20], slot: [s1], seats: [budget],
+               width: [fills ? 0 : run - s1], laneh: [laneH(s1 - 20)], trays: false };
     }
-    return { lanes: lanes, per: per, slot: slot, cup: cup };
+
+    // 杯の大きさは縦から決まります。段を積むので、ここがいちばんきついところ。
+    // 2 段目を 1.5 倍にすると、ほかの段はそのぶん小さくなります。
+    var room = vh * 0.90 - (lanes - 1) * VGAP;
+    var sum = 0;
+    // 1.0553 ＝ 傾きの広がり 1.037 ＋ 逃げのぶん 0.0183
+    for (i = 0; i < lanes; i++) sum += SCALE[i] * 1.0553;
+    var c = Math.floor((room - lanes * (8 + FOOT)) / sum);
+    c = Math.max(110, Math.min(c, 260));
+
+    var cup = [], slot = [];
+    for (i = 0; i < lanes; i++) {
+      cup[i]  = Math.round(c * SCALE[i]);
+      slot[i] = cup[i] + PAD;
+    }
+
+    // 段の長さは「席が埋めきれるところまで」にします。
+    // 席の数は WebGL の持ち分で決まるので、長さもそれで決まります。
+    // 画面幅まで届かないぶんは、段を短くして中央に寄せます
+    // （段を広げて席を散らすと、杯のあいだが空いて見えます。
+    //   以前は 1 枠 476px に杯 189px で、6 割が空きでした）。
+    var W = 0;
+    for (var w = Math.min(vw, 2400); w >= 200; w -= 2) {
+      var tot = 0;
+      for (i = 0; i < lanes; i++) tot += Math.ceil(w / slot[i]) + 1;
+      if (tot <= budget) { W = w; break; }
+    }
+    if (!W) W = 200;
+
+    var seats = [], laneh = [], width = [];
+    for (i = 0; i < lanes; i++) {
+      seats[i] = Math.ceil(W / slot[i]) + 1;
+      laneh[i] = laneH(cup[i]);
+      width[i] = W >= vw ? 0 : W;         // 0 = 画面いっぱい
+    }
+    return { lanes: lanes, cup: cup, slot: slot, seats: seats,
+             width: width, laneh: laneh, trays: true };
   }
 
   function when(ms) {
@@ -170,16 +213,18 @@
     var el = document.createElement('div');
     el.className = 'seat';
     // 机に無造作に置かれた感じを出すための、席ごとのばらつき
-    // 下へずらすだけにします。上へ持ち上げると帯の縁で切れてしまいます。
-    // 6px から始めるのは、杯を 2 度ほど傾けてあるぶん（実測 4.5px）
-    // 角が上に出るためです。下は 30px 以上余っています。
-    el.style.setProperty('--lift', 6 + ((i * 37) % 9) * 3 + 'px');
+    // 下へずらすだけにします。上へ持ち上げると段の縁で切れてしまいます。
+    // 5px から始めるのは、杯を 2 度ほど傾けてあるぶん角が上に出るためです。
+    // ずらしの幅は段の高さにそのまま乗るので、5〜11px に抑えています。
     el.style.setProperty('--tilt', ((((i * 53) % 7) - 3) * 0.7).toFixed(2) + 'deg');
 
     el.innerHTML =
       '<div class="seat__cup">' +
-        '<canvas data-cup data-pattern="-1" data-spoon="' + (i % 3 === 0 ? 1 : 0) + '"' +
-                ' data-sugar="' + (i % 4 === 1 ? 1 : 0) + '"' +
+        // data-zoom で寄ります。絵は枠の 53% → 78% になります。
+        // 角砂糖と匙は枠の外（半径 1.2 より先）なので置きません。
+        // 置くと角で欠けて見えます。
+        '<canvas data-cup data-pattern="-1" data-zoom="1.02"' +
+                ' data-spoon="0" data-sugar="0"' +
                 ' aria-label="だれかのラテアート。なぞると崩れます。"></canvas>' +
         '<p class="gl-note" hidden></p>' +
       '</div>' +
@@ -350,8 +395,8 @@
       var s = lane.seats[i];
       s.x += dx;
       // 端から出たら、反対の端へ回して次の一杯を注ぐ
-      while (s.x + SLOT < -4) { s.x += lane.total; serve(s, pickPost()); }
-      while (s.x > lane.total - SLOT + 4) { s.x -= lane.total; serve(s, pickPost()); }
+      while (s.x + lane.slot < -4) { s.x += lane.total; serve(s, pickPost()); }
+      while (s.x > lane.total - lane.slot + 4) { s.x -= lane.total; serve(s, pickPost()); }
       place(s);
     }
   }
@@ -391,8 +436,8 @@
   // 段ごとの左右キー。閉じ込みを作るので、段を作るときに渡します。
   function keyLane(lane) {
     return function (e) {
-      if (e.key === 'ArrowLeft')  { e.preventDefault(); lane.glide += SLOT; }
-      if (e.key === 'ArrowRight') { e.preventDefault(); lane.glide -= SLOT; }
+      if (e.key === 'ArrowLeft')  { e.preventDefault(); lane.glide += lane.slot; }
+      if (e.key === 'ArrowRight') { e.preventDefault(); lane.glide -= lane.slot; }
     };
   }
 
@@ -479,18 +524,13 @@
   // ---- 読み込み -----------------------------------------------------------
   function build() {
     var L = layout();
-    SLOT = L.slot;
+    SLOT = L.slot[0];
+    // 段ごとに違う値を使いますが、既定として帯にも置いておきます
     band.style.setProperty('--seatw', SLOT + 'px');
-    band.style.setProperty('--cupw', L.cup + 'px');
+    band.style.setProperty('--cupw', L.cup[0] + 'px');
     band.setAttribute('data-lanes', String(L.lanes));
-
-    // 段は「見えるぶん ＋ 袖 1 枠ぶん」必要です。袖が取れないほど横長な
-    // 画面では、段のほうを 1 枠ぶん狭めて中央に寄せます。止めてしまうと
-    // 「流れていく机」でなくなるので、狭めてでも流します。
-    var run = L.per * SLOT;
-    var fills = run - SLOT >= document.documentElement.clientWidth;
-    band.style.setProperty('--bandw', fills ? '100%' : (run - SLOT) + 'px');
-    band.setAttribute('data-narrow', fills ? '0' : '1');
+    // 段を別の板に見せるかどうか（1 段のトップページは机そのままです）
+    desk.setAttribute('data-trays', L.trays ? '1' : '0');
 
     // 動きを控える設定の人だけ、止めたままにします
     still = slow;
@@ -500,6 +540,11 @@
     for (var li = 0; li < L.lanes; li++) {
       var laneEl = document.createElement('div');
       laneEl.className = 'lane';
+      laneEl.style.setProperty('--seatw', L.slot[li] + 'px');
+      laneEl.style.setProperty('--cupw',  L.cup[li] + 'px');
+      laneEl.style.setProperty('--laneh', L.laneh[li] + 'px');
+      laneEl.style.setProperty('--lanew', L.width[li] ? L.width[li] + 'px' : '100%');
+      laneEl.setAttribute('data-narrow', L.width[li] ? '1' : '0');
       // 2 段目だけ左から右へ流します
       var dir = (li === 1) ? 1 : -1;
       laneEl.setAttribute('data-dir', dir > 0 ? 'right' : 'left');
@@ -511,23 +556,24 @@
         : 'みんなのラテアート。左右キーで送れます');
       band.appendChild(laneEl);
 
-      var lane = { el: laneEl, dir: dir, seats: [], total: 0,
+      var lane = { el: laneEl, dir: dir, seats: [], total: 0, slot: L.slot[li],
                    drag: null, fling: 0, glide: 0 };
       laneEl.addEventListener('keydown', keyLane(lane));
-      for (var i = 0; i < L.per; i++) {
+      for (var i = 0; i < L.seats[li]; i++) {
         var s = makeSeat(made++, laneEl);
         if (!s) continue;
         // 控えの 1 枠は、流れてくる側の外に置きます。
         // 左へ流れる段は右端の外、右へ流れる段は左端の外。
         // 右へ流れる段で右端に置くと、始まってすぐ回り込んでしまいます。
-        s.x = i * SLOT - (dir > 0 ? SLOT : 0);
+        s.el.style.setProperty('--lift', liftOf(L.cup[li], made - 1) + 'px');
+        s.x = i * L.slot[li] - (dir > 0 ? L.slot[li] : 0);
         place(s);
         lane.seats.push(s);
         seats.push(s);
         serve(s, pickPost());
       }
       if (!lane.seats.length) { band.removeChild(laneEl); continue; }
-      lane.total = lane.seats.length * SLOT;
+      lane.total = lane.seats.length * L.slot[li];
       lanes.push(lane);
     }
 

@@ -1122,39 +1122,66 @@ input[type="checkbox"] { accent-color: var(--accent); width: 15px; height: 15px;
 .desk__band {
   position: relative;
   display: grid;
-  gap: 14px;
+  gap: 10px;
   touch-action: pan-y;
 }
 
 /* 1 段ぶん。杯はこの中だけを動き、はみ出したぶんは切り落とします。
-   枠いっぱいに広げても画面に届かないときだけ、段を狭くして中央に寄せます
-   （--bandw と --cupw は gallery.js が決めます）。 */
+   --lanew（長さ）・--laneh（高さ）・--cupw（杯）・--seatw（枠）は
+   gallery.js が段ごとに決めます。段ごとに違う値が入ります。 */
 .lane {
   position: relative;
-  width: var(--bandw, 100%);
+  width: var(--lanew, 100%);
+  height: var(--laneh, 260px);
   margin-inline: auto;
   overflow: hidden;
-  height: calc((var(--cupw, 252px) + 19px) * 1.26);
 }
-/* 中央に寄せたときは、段の両端でも杯がすっと消えるようにします */
-.desk__band[data-narrow="1"] .lane::before,
-.desk__band[data-narrow="1"] .lane::after {
+
+/* 2 段以上あるときは、段を「別の板」として立てます。
+   背景がつながっていると、どこからどこまでが 1 段か分かりません。 */
+.desk[data-trays="1"] .lane {
+  border-radius: 16px;
+  /* 板ごとの木目。机の木目とは向きと細さを変えて、別の板に見せます */
+  background:
+    repeating-linear-gradient(90deg,
+      rgba(255, 255, 255, 0.022) 0 1px,
+      rgba(0, 0, 0, 0.026) 1px 4px,
+      rgba(255, 255, 255, 0) 4px 9px),
+    linear-gradient(180deg, #3a2a1e 0%, #2b1f16 60%, #1f160f 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.07),
+    inset 0 -14px 22px rgba(0, 0, 0, 0.5),
+    0 12px 24px rgba(0, 0, 0, 0.42);
+}
+/* 板の端。杯がすっと消えるように、両端だけ暗くします */
+.desk[data-trays="1"] .lane::before,
+.desk[data-trays="1"] .lane::after {
   content: "";
   position: absolute;
   top: 0;
   bottom: 0;
-  width: clamp(2rem, 6vw, 5rem);
+  width: clamp(1.4rem, 4vw, 3.4rem);
   pointer-events: none;
   z-index: 2;
 }
-.desk__band[data-narrow="1"] .lane::before {
+.desk[data-trays="1"] .lane::before {
   left: 0;
-  background: linear-gradient(90deg, #2a1d16, rgba(0, 0, 0, 0));
+  background: linear-gradient(90deg, #22180f, rgba(0, 0, 0, 0));
 }
-.desk__band[data-narrow="1"] .lane::after {
+.desk[data-trays="1"] .lane::after {
   right: 0;
-  background: linear-gradient(270deg, #2a1d16, rgba(0, 0, 0, 0));
+  background: linear-gradient(270deg, #22180f, rgba(0, 0, 0, 0));
 }
+
+/* 板を立てたときは、机のほうを平らな台にします。
+   木目を両方に出すと、板の切れ目が見えません。 */
+.desk[data-trays="1"] {
+  background:
+    radial-gradient(130% 100% at 50% 0%,
+      rgba(255, 255, 255, 0.035) 0%, rgba(0, 0, 0, 0) 60%),
+    linear-gradient(180deg, #1b1410 0%, #15100c 100%);
+}
+
 .desk__msg {
   margin: 0;
   padding: 3rem 1rem;

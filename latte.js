@@ -758,6 +758,10 @@
       hero:    canvas.dataset.hero === '1',
       matcha:  canvas.dataset.matcha === '1' ? 1 : 0,
       props:   [canvas.dataset.spoon === '1' ? 1 : 0, canvas.dataset.sugar === '1' ? 1 : 0],
+      // data-zoom … 絵を大きく見せたい杯（みんなの作品）の枠取り。
+      // 半径いくつまでを枠に収めるかを指します。1.02 なら、液面（0.80）と
+      // カップの縁（0.985）が入り、受け皿（1.22）は角にだけのぞきます。
+      zoom:    parseFloat(canvas.dataset.zoom || '0') || 0,
       mode:    canvas.dataset.pattern === '-1' ? 'draw' : 'stir',
       photo:   false,   // true = 手描きの絵を模様として使っている
       brush:   0.055,
@@ -816,7 +820,12 @@
       var wide = state.hero && canvas.clientWidth >= 900 && aspect > 1.15;
       // body.wide は見出しのカップだけが決める（他の杯が打ち消さないように）
       if (state.hero) document.body.classList.toggle('wide', wide);
-      if (wide) {
+      if (state.zoom) {
+        // 寄る杯。NEED（受け皿・持ち手まで収める半径）は使いません。
+        // 枠の短いほうに zoom を合わせます。
+        state.view = state.zoom / Math.max(Math.min(aspect, 1), 0.3);
+        state.center = [0, 0];
+      } else if (wide) {
         state.view = Math.max(1.52, CONF.NEED / Math.max(aspect * 0.60, 0.01));
         state.center = [heroPlace(canvas.clientWidth, canvas.clientHeight, state.view), 0];
       } else {
