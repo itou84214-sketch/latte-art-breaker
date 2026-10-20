@@ -893,6 +893,12 @@
       drawPour(0);
     }
 
+    // 画像が入ったか消えたかの知らせ先
+    var photoWatch = [];
+    function tellPhoto() {
+      for (var i = 0; i < photoWatch.length; i++) photoWatch[i](state.photo);
+    }
+
     function stirInput() {
       var pt = state.pointer;
       var strength = 0;
@@ -1083,8 +1089,10 @@
         ctx.putImageData(id, 0, 0);
         return out;
       },
-      setPhoto: function (src) { uploadPhoto(src); state.photo = true; restart(); },
-      clearPhoto: function () { state.photo = false; restart(); },
+      setPhoto: function (src) { uploadPhoto(src); state.photo = true; restart(); tellPhoto(); },
+      clearPhoto: function () { state.photo = false; restart(); tellPhoto(); },
+      // 画像が入ったか／消えたかを知りたい人に伝える（投稿ボタンが使います）
+      onPhoto: function (fn) { photoWatch.push(fn); },
       setMode: function (m) { state.mode = m; canvas.dataset.mode = m; },
       setBrush: function (b) { state.brush = b; },
       arm: function () {
@@ -1106,33 +1114,37 @@
   //  起動
   // =======================================================================
   var cups = [];
-  var canvases = document.querySelectorAll('canvas[data-cup]');
-  for (var i = 0; i < canvases.length; i++) {
-    var cup = createCup(canvases[i]);
-    if (cup) cups.push(cup);
+
+  // 画面に入ったら注ぎはじめる／出たら描画も止める
+  var io = window.IntersectionObserver
+    ? new IntersectionObserver(function (entries) {
+        entries.forEach(function (en) {
+          for (var k = 0; k < cups.length; k++) {
+            if (cups[k].canvas !== en.target) continue;
+            cups[k].setVisible(en.isIntersecting);
+            if (en.isIntersecting) cups[k].arm();
+          }
+        });
+      }, { rootMargin: '140px 0px' })
+    : null;
+
+  // あとから足した canvas も杯にできます（みんなのラテアートの席がこれを使います）
+  function mount(canvas) {
+    var c = createCup(canvas);
+    if (!c) return null;
+    cups.push(c);
+    if (io) io.observe(canvas);
+    else c.arm();
+    return c;
   }
-  if (!cups.length) return;
+
+  var canvases = document.querySelectorAll('canvas[data-cup]');
+  for (var i = 0; i < canvases.length; i++) mount(canvases[i]);
 
   function cupOf(el) {
     var cv = el.querySelector('canvas[data-cup]');
     for (var k = 0; k < cups.length; k++) if (cups[k].canvas === cv) return cups[k];
     return null;
-  }
-
-  // 画面に入ったら注ぎはじめる／出たら描画も止める
-  if (window.IntersectionObserver) {
-    var io = new IntersectionObserver(function (entries) {
-      entries.forEach(function (en) {
-        for (var k = 0; k < cups.length; k++) {
-          if (cups[k].canvas !== en.target) continue;
-          cups[k].setVisible(en.isIntersecting);
-          if (en.isIntersecting) cups[k].arm();
-        }
-      });
-    }, { rootMargin: '140px 0px' });
-    cups.forEach(function (c) { io.observe(c.canvas); });
-  } else {
-    cups.forEach(function (c) { c.arm(); });
   }
 
   var last = performance.now();
@@ -1526,7 +1538,21 @@
       else note.removeAttribute('data-state');
     }
 
+    // 入れた画像は投稿できません。他の人の写真や絵が、そのまま
+    // みんなのページに並んでしまわないようにしています。
+    var BLOCKED = '画像から作ったラテは投稿できません。手元で崩して楽しむところまでです。'
+                + '「まっさらにする」で消すと、指で描いたものを投稿できます。';
+    function refresh() {
+      var blocked = !!(cup.state && cup.state.photo);
+      btn.disabled = blocked;
+      box.setAttribute('data-blocked', blocked ? '1' : '0');
+      say(blocked ? BLOCKED : '', blocked ? 'err' : null);
+    }
+    if (cup.onPhoto) cup.onPhoto(refresh);
+    refresh();
+
     btn.addEventListener('click', function () {
+      if (cup.state && cup.state.photo) { say(BLOCKED, 'err'); return; }
       var shot = cup.exportMask && cup.exportMask();
       if (!shot) { say('絵を取り出せませんでした', 'err'); return; }
 
@@ -1642,5 +1668,9 @@
     });
   })();
 
-  window.LatteArt = { conf: CONF, shared: shared, cups: cups, buildMask: buildMask, cupOf: cupOf };
+  window.LatteArt = {
+    conf: CONF, shared: shared, cups: cups,
+    buildMask: buildMask, cupOf: cupOf,
+    addCup: mount        // あとから席を増やすとき（gallery.js）
+  };
 })();

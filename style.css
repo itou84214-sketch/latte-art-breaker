@@ -838,54 +838,115 @@ input[type="checkbox"] { accent-color: var(--accent); width: 15px; height: 15px;
   .jazz__btn[aria-pressed="true"] .jazz__notes span { opacity: 1; }
   .btn, .seg__btn { transition: none; }
 }
-/* ===== みんなのラテアート ===== */
-/* =========================================================
-   投稿の区画（index.html の「自分で描く」の中）
-   ========================================================= */
-.post {
-  margin: 1.4rem 0 0 auto;
-  max-width: 22rem;
-  padding-top: 1.2rem;
-  border-top: 2px dashed rgba(201, 138, 75, 0.3);
+/* ===== 遊びかたの 2 区画 ===== */
+/* 投稿できる A と、できない B。取り違えないよう枠と色で分けています。 */
+.way {
+  margin: 1.5rem 0 0 auto;
+  max-width: 23rem;
+  padding: 1.1rem 1.2rem 1.3rem;
+  border-radius: 10px;
   display: grid;
-  gap: 0.55rem;
+  gap: 0.6rem;
   justify-items: end;
   text-align: right;
+  position: relative;
 }
-.stage--flip .post { margin-left: 0; margin-right: auto; justify-items: start; text-align: left; }
+.stage--flip .way { margin-left: 0; margin-right: auto; justify-items: start; text-align: left; }
 
-.post__lead {
+.way--draw  { background: rgba(201, 138, 75, 0.10); box-shadow: inset 0 0 0 2px rgba(201, 138, 75, 0.34); }
+.way--photo { background: rgba(242, 232, 220, 0.035); box-shadow: inset 0 0 0 2px var(--line); }
+
+.way__tag {
+  position: absolute;
+  top: -0.7rem;
+  right: 1rem;
+  margin: 0;
+  width: 1.6rem;
+  height: 1.6rem;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  font-family: var(--ui);
+  font-weight: 700;
+  font-size: 0.78rem;
+  color: #2a1608;
+  background: var(--btn-warm);
+}
+.stage--flip .way__tag { right: auto; left: 1rem; }
+.way--photo .way__tag { background: #6a5a4c; color: var(--foam); }
+
+.way__title {
   margin: 0;
   font-family: var(--ui);
   font-weight: 700;
-  font-size: 0.82rem;
-  letter-spacing: 0.06em;
+  font-size: 1rem;
+  letter-spacing: 0.08em;
   color: var(--foam);
+}
+.way__lead {
+  margin: -0.2rem 0 0.2rem;
+  font-size: 0.78rem;
+  line-height: 1.8;
+  color: var(--accent);
+}
+.way__lead--warn { color: var(--ink-dim); }
+
+/* 2 区画の中では、元からある塊の外側の余白をそろえ直します */
+.way .seg--wide,
+.way .brush,
+.way .stage__btns,
+.way .mine { margin-top: 0.3rem; }
+.way .mine { max-width: none; padding-top: 0; border-top: 0; }
+.way .post { margin: 0.9rem 0 0; max-width: none; padding-top: 0.9rem; }
+
+/* ===== 投稿の区画 ===== */
+.post {
+  width: 100%;
+  border-top: 2px dashed rgba(201, 138, 75, 0.3);
+  display: grid;
+  gap: 0.55rem;
+  justify-items: inherit;
+  text-align: inherit;
 }
 .post__row { display: flex; flex-wrap: wrap; gap: 0.6rem; }
 .post__note {
   margin: 0;
-  font-size: 0.72rem;
+  font-size: 0.74rem;
   line-height: 1.85;
   color: var(--ink-dim);
 }
 .post__note[data-state="ok"]  { color: var(--accent); }
 .post__note[data-state="err"] { color: #e8a08c; }
 
+/* 画像が入っているあいだは投稿できません。見ただけで分かるようにします。 */
+.post[data-blocked="1"] { opacity: 0.72; }
+.post[data-blocked="1"] .btn[data-act="post"] {
+  background: #4a3f36;
+  color: #9d8d7e;
+  box-shadow: 3px 3px 0 #241a12;
+  cursor: not-allowed;
+}
+
+@media (max-width: 820px) {
+  .way { margin-left: 0; margin-right: auto; justify-items: start; text-align: left; }
+  .way__tag { right: auto; left: 1rem; }
+}
+/* ===== みんなのラテアート ===== */
 /* =========================================================
-   みんなのラテアート（gallery.html）
+   見出し
    ========================================================= */
 .galhead {
-  max-width: 76rem;
+  max-width: 64rem;
   margin: 0 auto;
   padding: clamp(2rem, 7vh, 3.6rem) clamp(1rem, 5vw, 4rem) 0;
   text-align: center;
 }
 .galhead__back {
   display: inline-block;
-  margin-bottom: 1.4rem;
+  margin-bottom: 1.6rem;
   font-family: var(--ui);
-  font-size: 0.8rem;
+  font-weight: 700;
+  font-size: 0.9rem;
   color: var(--accent);
   text-decoration: none;
 }
@@ -894,141 +955,163 @@ input[type="checkbox"] { accent-color: var(--accent); width: 15px; height: 15px;
   margin: 0;
   font-family: var(--ui);
   font-weight: 700;
-  font-size: 0.66rem;
+  font-size: 0.72rem;
   letter-spacing: 0.3em;
   color: var(--accent);
 }
 .galhead__title {
-  margin: 0.5rem 0 0.8rem;
+  margin: 0.6rem 0 1rem;
   font-family: var(--serif);
   font-weight: 400;
-  font-size: clamp(1.7rem, 5vw, 2.8rem);
+  font-size: clamp(2.1rem, 6.5vw, 3.6rem);
   letter-spacing: 0.08em;
+  text-wrap: balance;
 }
 .galhead__lead {
   margin: 0;
-  font-size: 0.86rem;
-  line-height: 2;
+  font-size: clamp(0.95rem, 2.4vw, 1.08rem);
+  line-height: 2.1;
+  color: var(--ink-dim);
+}
+.galhead__lead b { color: var(--foam); font-weight: 500; }
+
+/* =========================================================
+   机。区切りは置かず、1 枚板の上にカップが並びます
+   ========================================================= */
+.desk {
+  position: relative;
+  margin-top: clamp(2rem, 6vh, 3.4rem);
+  padding: clamp(1.6rem, 4vh, 2.6rem) 0 clamp(2.2rem, 5vh, 3.2rem);
+  overflow: hidden;
+  /* 木目。細い縞を重ねただけで、画像は使っていません */
+  background:
+    repeating-linear-gradient(90deg,
+      rgba(255, 255, 255, 0.018) 0 2px,
+      rgba(0, 0, 0, 0.022) 2px 5px,
+      rgba(255, 255, 255, 0) 5px 11px),
+    linear-gradient(180deg, #2e2018 0%, #241a13 55%, #1b130e 100%);
+  box-shadow: inset 0 14px 26px rgba(0, 0, 0, 0.45),
+              inset 0 -10px 20px rgba(0, 0, 0, 0.4);
+}
+/* 両端はそっと暗くして、机が続いているように見せます */
+.desk::before,
+.desk::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: clamp(2rem, 8vw, 7rem);
+  pointer-events: none;
+  z-index: 2;
+}
+.desk::before { left: 0;  background: linear-gradient(90deg, var(--bg), rgba(0,0,0,0)); }
+.desk::after  { right: 0; background: linear-gradient(270deg, var(--bg), rgba(0,0,0,0)); }
+
+.desk__band {
+  position: relative;
+  height: calc(var(--seatw, 272px) * 1.26);
+  touch-action: pan-y;
+}
+.desk__msg {
+  margin: 0;
+  padding: 3rem 1rem;
+  text-align: center;
+  font-size: 1rem;
+  color: var(--ink-dim);
+}
+.desk__msg[data-state="err"] { color: #e8a08c; }
+
+.desk__hint {
+  margin: 1.1rem auto 0;
+  text-align: center;
+  font-family: var(--ui);
+  font-size: 0.88rem;
   color: var(--ink-dim);
 }
 
-/* ---------- 選んだ一杯 ---------- */
-.pick {
-  max-width: 76rem;
-  margin: clamp(1.6rem, 5vh, 2.6rem) auto 0;
-  padding: 0 clamp(1rem, 5vw, 4rem);
+/* ---------- 1 席 ---------- */
+.seat {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: var(--seatw, 272px);
+  padding: 0 0.6rem;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  align-items: center;
-  gap: clamp(1.2rem, 4vw, 3rem);
+  justify-items: center;
+  gap: 0.5rem;
+  will-change: transform;
 }
-.pick__cup canvas {
+.seat__cup {
+  width: 100%;
+  margin-top: var(--lift, 0px);
+  transform: rotate(var(--tilt, 0deg));
+}
+.seat__cup canvas {
   display: block;
   width: 100%;
-  max-width: 28rem;
   aspect-ratio: 1 / 1;
-  margin-left: auto;
   cursor: grab;
   touch-action: none;
-  border-radius: 10px;
+  /* 机に落ちる影 */
+  filter: drop-shadow(0 10px 14px rgba(0, 0, 0, 0.5));
 }
-.pick__cup canvas.stirring { cursor: grabbing; }
+.seat__cup canvas.stirring { cursor: grabbing; }
 
-.pick__side { display: grid; gap: 0.8rem; justify-items: start; }
-.pick__state {
-  margin: 0;
-  font-family: var(--ui);
-  font-weight: 700;
-  font-size: 0.9rem;
-  letter-spacing: 0.06em;
-  color: var(--foam);
-}
-.pick__btns { display: flex; flex-wrap: wrap; gap: 0.6rem; }
-.pick__hint {
-  margin: 0;
-  font-size: 0.76rem;
-  color: var(--ink-dim);
-}
-
-/* いいねボタン */
-.btn--like { display: inline-flex; align-items: center; gap: 0.45rem; }
-.like__heart { font-size: 1rem; line-height: 1; color: var(--ink-dim); transition: color 0.18s, transform 0.18s; }
-.like__count { font-variant-numeric: tabular-nums; }
-.btn--like[aria-pressed="true"] {
-  background: var(--btn-warm);
-  color: #2a1608;
-  box-shadow: 3px 3px 0 var(--btn-warmd);
-}
-.btn--like[aria-pressed="true"] .like__heart { color: #b4322a; transform: scale(1.18); }
-
-/* ---------- 一覧 ---------- */
-.wall {
-  max-width: 76rem;
-  margin: clamp(2.4rem, 7vh, 4rem) auto 0;
-  padding: clamp(2rem, 5vh, 3rem) clamp(1rem, 5vw, 4rem) 0;
-  border-top: 1px solid var(--line);
-}
-.wall__grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(9.5rem, 1fr));
-  gap: clamp(0.8rem, 2.5vw, 1.3rem);
-}
-.card {
-  background: #17100b;
-  border-radius: 8px;
-  overflow: hidden;
-  box-shadow: 3px 3px 0 #0a0604;
-  transition: transform 0.1s, box-shadow 0.1s;
-}
-.card:hover { transform: translate(-1px, -1px); box-shadow: 4px 4px 0 #0a0604; }
-.card.is-picked { outline: 3px solid var(--accent); outline-offset: 2px; }
-.card.is-mine::after {
-  content: "じぶん";
-  display: block;
-  margin: 0 0.6rem 0.6rem;
-  padding: 0.1rem 0.4rem;
-  width: fit-content;
-  border-radius: 3px;
-  background: var(--accent);
-  color: #2a1608;
-  font-family: var(--ui);
-  font-weight: 700;
-  font-size: 0.64rem;
-}
-.card__btn {
-  display: block;
-  width: 100%;
-  padding: 0;
-  border: 0;
-  background: #120c08;
-  cursor: pointer;
-}
-.card__img { display: block; width: 100%; aspect-ratio: 1 / 1; object-fit: contain; }
-.card__foot {
+.seat__foot {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 0.4rem;
-  padding: 0.5rem 0.65rem;
+  gap: 0.7rem;
   font-family: var(--ui);
-  font-size: 0.7rem;
-  color: var(--ink-dim);
 }
-.card__likes { display: inline-flex; align-items: center; gap: 0.25rem; color: var(--foam); font-weight: 700; }
-.card__n { font-variant-numeric: tabular-nums; }
+.seat__when { font-size: 0.78rem; color: var(--ink-dim); }
 
-.wall__msg {
-  margin: 1.6rem 0 0;
-  text-align: center;
-  font-size: 0.84rem;
-  color: var(--ink-dim);
+/* ---------- ハート ---------- */
+.heart {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.34rem 0.8rem;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(242, 232, 220, 0.08);
+  color: var(--foam);
+  font-family: var(--ui);
+  font-weight: 700;
+  font-size: 1.05rem;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 0.16s, transform 0.1s;
 }
-.wall__msg[data-state="err"] { color: #e8a08c; }
-.wall__more { margin-top: 1.8rem; text-align: center; }
+.heart:hover { background: rgba(242, 232, 220, 0.16); }
+.heart:active { transform: translateY(1px); }
+.heart__mark { font-size: 1.15rem; color: #8d7566; transition: color 0.18s, transform 0.18s; }
+.heart__n { font-variant-numeric: tabular-nums; min-width: 1.1em; text-align: left; }
 
-@media (max-width: 820px) {
-  .pick { grid-template-columns: 1fr; }
-  .pick__cup canvas { margin: 0 auto; }
-  .pick__side { justify-items: center; text-align: center; }
-  .post { margin-left: 0; margin-right: auto; justify-items: start; text-align: left; }
+.heart[aria-pressed="true"] { background: rgba(196, 62, 48, 0.22); }
+.heart[aria-pressed="true"] .heart__mark { color: #e2584a; transform: scale(1.2); }
+
+/* 押した瞬間だけ弾ませます */
+.seat.pop .heart__mark { animation: heart-pop 0.42s ease-out; }
+@keyframes heart-pop {
+  0%   { transform: scale(1); }
+  45%  { transform: scale(1.65); }
+  100% { transform: scale(1.2); }
+}
+
+.seat__drop {
+  padding: 0.2rem 0.55rem;
+  border: 0;
+  border-radius: 4px;
+  background: rgba(242, 232, 220, 0.08);
+  color: var(--ink-dim);
+  font-family: var(--ui);
+  font-size: 0.72rem;
+  cursor: pointer;
+}
+.seat__drop:hover { background: rgba(232, 160, 140, 0.2); color: #e8a08c; }
+
+@media (max-width: 700px) {
+  .seat__foot { gap: 0.5rem; }
+  .seat__when { display: none; }
+  .heart { font-size: 0.98rem; }
 }

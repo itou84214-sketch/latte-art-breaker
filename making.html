@@ -207,13 +207,14 @@ footer a { color: var(--accent); }
     <p class="eyebrow">MAKING OF</p>
     <h1>このサイトは、どうやって作られたのか</h1>
     <p class="lede">
-      サイトを配っているのは S3 バケット 1 つだけで、流体の計算は全部ブラウザの GPU で走ります。
+      ファイルを置いているのは S3 バケット 1 つ、配っているのは CloudFront です。
+      流体の計算は全部ブラウザの GPU で走ります。
       あとから足した「みんなのラテアート」の投稿だけ、Lambda と DynamoDB を使っています。
       常時動いているサーバーは、いまも 1 台もありません。
     </p>
     <ul class="meta">
       <li>リージョン <b>ap-northeast-1</b></li>
-      <li>公開ファイル <b>14 点 / 約 7.0 MB</b></li>
+      <li>公開ファイル <b>14 点 / 約 7.1 MB</b></li>
       <li>ビルド工程 <b>なし</b></li>
       <li>HTTP 実測 <b>2026-10-20</b></li>
     </ul>
@@ -222,8 +223,8 @@ footer a { color: var(--accent); }
   <figure>
     <p class="swipe">← 図は横にスクロールできます →</p>
     <div class="scroller">
-      <svg viewBox="0 148 1160 486" role="img"
-           aria-label="制作者のPCから aws s3 cp で S3 バケットへファイルを上げ、S3 が REST エンドポイント（HTTPS・ルートは403）とウェブサイトエンドポイント（HTTPのみ）の2つの名前で配信し、閲覧者のブラウザが受け取って WebGL2 で 5 杯ぶんの流体を計算する構成図。">
+      <svg viewBox="0 148 1420 486" role="img"
+           aria-label="制作者のPCから aws s3 cp で S3 バケットへファイルを上げ、S3 の REST エンドポイントを CloudFront が受けて HTTPS で配信し、閲覧者のブラウザが受け取って WebGL2 で流体を計算する構成図。ウェブサイトエンドポイントは HTTPS を持たないため、CloudFront を通さない道として残してある。">
         <defs>
           <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
             <path d="M 0 0 L 10 5 L 0 10 z" fill="rgba(242,232,220,0.32)"/>
@@ -233,7 +234,7 @@ footer a { color: var(--accent); }
           </marker>
         </defs>
 
-        <rect class="zone" x="254" y="166" width="612" height="342" rx="12"/>
+        <rect class="zone" x="254" y="166" width="572" height="342" rx="12"/>
         <text class="t-zone" x="274" y="194">AWS ap-northeast-1</text>
 
         <rect class="n-box" x="20" y="226" width="170" height="104" rx="9"/>
@@ -245,63 +246,78 @@ footer a { color: var(--accent); }
         <text class="t-edge" x="235" y="266" text-anchor="middle">aws s3 cp</text>
         <text class="t-m"    x="235" y="298" text-anchor="middle">8 ファイル</text>
 
-        <rect class="n-box" x="286" y="226" width="300" height="104" rx="9"/>
+        <rect class="n-box" x="286" y="226" width="280" height="104" rx="9"/>
         <text class="t-h"    x="306" y="258">Amazon S3</text>
-        <text class="t-b"    x="306" y="282">静的ウェブサイトホスティング</text>
+        <text class="t-b"    x="306" y="282">置くだけ。誰でも読めます</text>
         <text class="t-code" x="306" y="306">latte-art-breaker-ed645a8f</text>
 
-        <line class="edge-dot" x1="436" y1="330" x2="436" y2="374"/>
+        <line class="edge-dot" x1="426" y1="330" x2="426" y2="374"/>
 
-        <rect class="n-sunk" x="286" y="374" width="300" height="96" rx="9"/>
+        <rect class="n-sunk" x="286" y="374" width="280" height="96" rx="9"/>
         <text class="t-b" x="306" y="400">バケットポリシー</text>
         <text class="t-m" x="306" y="422">誰でも GetObject だけ可（書き込み不可）</text>
-        <text class="t-m" x="306" y="444">Block Public Access は 4 項目とも OFF</text>
+        <text class="t-m" x="306" y="444">匿名の PUT / DELETE / 一覧は 403（実測）</text>
 
-        <line class="edge-key" x1="586" y1="257" x2="648" y2="257" marker-end="url(#ahk)"/>
-        <polyline class="edge" points="586,300 620,300 620,407 648,407" marker-end="url(#ah)"/>
+        <line class="edge-key" x1="566" y1="257" x2="618" y2="257" marker-end="url(#ahk)"/>
+        <polyline class="edge" points="566,300 592,300 592,407 618,407" marker-end="url(#ah)"/>
 
-        <rect class="n-key" x="654" y="202" width="190" height="110" rx="9"/>
-        <text class="t-b"    x="672" y="230">REST エンドポイント</text>
-        <text class="t-code" x="672" y="252">…s3.ap-northeast-1…</text>
-        <text class="t-key"  x="672" y="276">HTTPS で読める</text>
-        <text class="t-m"    x="672" y="297">ルート / は 403（実測）</text>
+        <rect class="n-box" x="624" y="202" width="188" height="110" rx="9"/>
+        <text class="t-b"    x="642" y="230">REST の入口</text>
+        <text class="t-code" x="642" y="252">…s3.ap-northeast-1…</text>
+        <text class="t-m"    x="642" y="276">HTTPS で読める</text>
+        <text class="t-m"    x="642" y="297">ルート / は 403（実測）</text>
 
-        <rect class="n-box" x="654" y="352" width="190" height="110" rx="9"/>
-        <text class="t-b"    x="672" y="380">ウェブサイト用</text>
-        <text class="t-code" x="672" y="402">…s3-website-…</text>
-        <text class="t-b"    x="672" y="426">/ でトップが開く</text>
-        <text class="t-warn" x="672" y="447">HTTPS は不可（実測）</text>
+        <rect class="n-box" x="624" y="352" width="188" height="110" rx="9"/>
+        <text class="t-b"    x="642" y="380">ウェブサイト用</text>
+        <text class="t-code" x="642" y="402">…s3-website-…</text>
+        <text class="t-m"    x="642" y="426">/ でトップが開く</text>
+        <text class="t-warn" x="642" y="447">HTTPS は不可（実測）</text>
 
-        <line class="edge-key" x1="844" y1="257" x2="914" y2="257" marker-end="url(#ahk)"/>
-        <text class="t-edge" x="879" y="245" text-anchor="middle">GET</text>
-        <line class="edge" x1="844" y1="407" x2="914" y2="407" marker-end="url(#ah)"/>
-        <text class="t-edge" x="879" y="395" text-anchor="middle">GET</text>
+        <line class="edge-key" x1="812" y1="257" x2="866" y2="257" marker-end="url(#ahk)"/>
+        <text class="t-edge" x="839" y="245" text-anchor="middle">元</text>
 
-        <rect class="n-box" x="920" y="176" width="212" height="306" rx="9"/>
-        <text class="t-h" x="940" y="208">閲覧者のブラウザ</text>
-        <text class="t-m" x="940" y="234">ログイン不要</text>
-        <line class="edge-dot" x1="940" y1="252" x2="1112" y2="252"/>
-        <text class="t-b" x="940" y="278">受け取る</text>
-        <text class="t-m" x="940" y="300">HTML / CSS / JS / MP3</text>
-        <text class="t-b" x="940" y="332">そのあと自前で</text>
-        <text class="t-m" x="940" y="354">WebGL2 を 5 つ起動（1 杯 = 1 つ）</text>
-        <text class="t-m" x="940" y="376">GPU で流体を毎コマ計算</text>
-        <text class="t-m" x="940" y="398">触れた杯だけ動かす</text>
-        <line class="edge-dot" x1="940" y1="418" x2="1112" y2="418"/>
-        <text class="t-key" x="940" y="444">計算は AWS 側では一切しない</text>
-        <text class="t-m"   x="940" y="466">S3 はファイルを渡すだけ</text>
+        <rect class="n-key" x="872" y="196" width="238" height="190" rx="9"/>
+        <text class="t-h"    x="892" y="228">CloudFront</text>
+        <text class="t-code" x="892" y="250">dk4ldbc0vohw2.cloudfront.net</text>
+        <text class="t-key"  x="892" y="276">/ でトップが開く ＋ HTTPS</text>
+        <text class="t-m"    x="892" y="298">http で来たら 301 で送り返す</text>
+        <text class="t-m"    x="892" y="320">Brotli で圧縮して渡す</text>
+        <text class="t-m"    x="892" y="342">latte.js 67,740 → 19,859 B</text>
+        <text class="t-m"    x="892" y="364">S3 の no-cache を引き継ぐ</text>
+        <text class="t-m"    x="892" y="386" opacity="0">.</text>
+        <text class="t-zone" x="872" y="182">世界中の拠点から配る（地域を持たない）</text>
 
-        <line class="edge" x1="1026" y1="482" x2="1026" y2="534" marker-end="url(#ah)"/>
-        <text class="t-edge" x="1038" y="512" text-anchor="start">フォント取得</text>
+        <line class="edge-key" x1="1110" y1="257" x2="1172" y2="257" marker-end="url(#ahk)"/>
+        <text class="t-edge" x="1141" y="245" text-anchor="middle">GET</text>
+        <polyline class="edge" points="812,407 1140,407 1140,330 1172,330" marker-end="url(#ah)"/>
+        <text class="t-m" x="976" y="397" text-anchor="middle">CloudFront を通さない道（HTTP のまま）</text>
 
-        <rect class="n-sunk" x="920" y="540" width="212" height="76" rx="9"/>
-        <text class="t-b" x="940" y="568">Google Fonts</text>
-        <text class="t-m" x="940" y="590">AWS の外。Noto Serif / Sans JP</text>
+        <rect class="n-box" x="1178" y="176" width="226" height="306" rx="9"/>
+        <text class="t-h" x="1198" y="208">閲覧者のブラウザ</text>
+        <text class="t-m" x="1198" y="234">ログイン不要</text>
+        <line class="edge-dot" x1="1198" y1="252" x2="1384" y2="252"/>
+        <text class="t-b" x="1198" y="278">受け取る</text>
+        <text class="t-m" x="1198" y="300">HTML / CSS / JS / MP3</text>
+        <text class="t-b" x="1198" y="332">そのあと自前で</text>
+        <text class="t-m" x="1198" y="354">WebGL2 を起動（1 杯 = 1 つ）</text>
+        <text class="t-m" x="1198" y="376">GPU で流体を毎コマ計算</text>
+        <text class="t-m" x="1198" y="398">画面に入っている杯だけ動かす</text>
+        <line class="edge-dot" x1="1198" y1="418" x2="1384" y2="418"/>
+        <text class="t-key" x="1198" y="444">計算は AWS 側では一切しない</text>
+        <text class="t-m"   x="1198" y="466">S3 はファイルを渡すだけ</text>
+
+        <line class="edge" x1="1291" y1="482" x2="1291" y2="534" marker-end="url(#ah)"/>
+        <text class="t-edge" x="1303" y="512" text-anchor="start">フォント取得</text>
+
+        <rect class="n-sunk" x="1178" y="540" width="226" height="76" rx="9"/>
+        <text class="t-b" x="1198" y="568">Google Fonts</text>
+        <text class="t-m" x="1198" y="590">AWS の外。Noto Serif / Zen Maru Gothic</text>
       </svg>
     </div>
     <figcaption>
       矢印の上の文字が、そこで起きていることです。番号を振って説明を下にまとめると目が往復するので、
-      説明はすべて図の中に置いてあります。403 と HTTPS 不可は <code>curl</code> で実際に確かめた結果です。
+      説明はすべて図の中に置いてあります。403・HTTPS 不可・301・圧縮後のサイズは、
+      すべて <code>curl</code> で実際に確かめた結果です。
       この図は<b>サイトを配る道すじ</b>だけで、投稿は通りません。投稿は次の図です。
     </figcaption>
   </figure>
@@ -381,21 +397,23 @@ footer a { color: var(--accent); }
 
   <section class="urls">
     <article class="url url--key">
-      <h3>REST エンドポイント <span class="tag tag--key">人に見せるならこちら</span></h3>
-      <p class="addr">https://latte-art-breaker-ed645a8f.s3.ap-northeast-1.amazonaws.com/index.html</p>
+      <h3>CloudFront <span class="tag tag--key">人に見せるならこちら</span></h3>
+      <p class="addr">https://dk4ldbc0vohw2.cloudfront.net/</p>
       <ul>
-        <li><b>HTTPS が使える。</b>鍵マークが付くので、ブラウザが警告を出しません</li>
-        <li><b>ルートは開けない。</b><code>/</code> を叩くと 403 が返るため、<code>/index.html</code> まで必要</li>
-        <li>全ファイル実測で 200。Content-Type も意図どおり</li>
+        <li><b>HTTPS でルートが開く。</b>短いうえに鍵マークが付きます</li>
+        <li><b><code>http://</code> は自動で送り返す。</b>実測で <code>301</code>、行き先は同じ URL の <code>https://</code></li>
+        <li><b>圧縮が効く。</b>Brotli で <code>latte.js</code> 67,740 B → 19,859 B、<code>style.css</code> 30,272 B → 7,647 B</li>
+        <li>S3 側の <code>no-cache</code> をそのまま引き継ぐので、上げ直せばすぐ反映されます</li>
       </ul>
     </article>
     <article class="url">
-      <h3>ウェブサイトエンドポイント <span class="tag tag--plain">自分で開くとき</span></h3>
+      <h3>S3 の 2 つの入口 <span class="tag tag--plain">CloudFront の後ろ側</span></h3>
+      <p class="addr">https://latte-art-breaker-ed645a8f.s3.ap-northeast-1.amazonaws.com/index.html</p>
       <p class="addr">http://latte-art-breaker-ed645a8f.s3-website-ap-northeast-1.amazonaws.com/</p>
       <ul>
-        <li><b>ルートでトップが開く。</b>静的ウェブサイトホスティングが <code>index.html</code> を返します</li>
-        <li><b>HTTPS では繋がらない。</b>証明書が無いため、<code>https://</code> を付けると接続そのものが失敗します</li>
-        <li>短いので、自分で開く分にはこちらが楽</li>
+        <li><b>上（REST）は HTTPS で読めるが、ルートは 403。</b><code>/index.html</code> まで必要です</li>
+        <li><b>下（ウェブサイト用）はルートで開くが、HTTPS が無い。</b>証明書を置けない入口のため、ブラウザが警告を出します</li>
+        <li>この 2 つの短所を打ち消すために CloudFront を前に置きました</li>
       </ul>
     </article>
   </section>
@@ -414,20 +432,20 @@ footer a { color: var(--accent); }
           </tr>
         </thead>
         <tbody>
-          <tr><th scope="row"><code>index.html</code></th><td><code>text/html; charset=utf-8</code></td><td><code>no-cache</code></td><td class="num">11,677 B</td><td class="ok">200</td></tr>
-          <tr><th scope="row"><code>gallery.html</code></th><td><code>text/html; charset=utf-8</code></td><td><code>no-cache</code></td><td class="num">3,447 B</td><td class="ok">200</td></tr>
-          <tr><th scope="row"><code>style.css</code></th><td><code>text/css; charset=utf-8</code></td><td><code>no-cache</code></td><td class="num">27,981 B</td><td class="ok">200</td></tr>
-          <tr><th scope="row"><code>latte.js</code></th><td><code>text/javascript; charset=utf-8</code></td><td><code>no-cache</code></td><td class="num">66,375 B</td><td class="ok">200</td></tr>
-          <tr><th scope="row"><code>gallery.js</code></th><td><code>text/javascript; charset=utf-8</code></td><td><code>no-cache</code></td><td class="num">8,317 B</td><td class="ok">200</td></tr>
+          <tr><th scope="row"><code>index.html</code></th><td><code>text/html; charset=utf-8</code></td><td><code>no-cache</code></td><td class="num">12,167 B</td><td class="ok">200</td></tr>
+          <tr><th scope="row"><code>gallery.html</code></th><td><code>text/html; charset=utf-8</code></td><td><code>no-cache</code></td><td class="num">2,641 B</td><td class="ok">200</td></tr>
+          <tr><th scope="row"><code>style.css</code></th><td><code>text/css; charset=utf-8</code></td><td><code>no-cache</code></td><td class="num">30,272 B</td><td class="ok">200</td></tr>
+          <tr><th scope="row"><code>latte.js</code></th><td><code>text/javascript; charset=utf-8</code></td><td><code>no-cache</code></td><td class="num">67,740 B</td><td class="ok">200</td></tr>
+          <tr><th scope="row"><code>gallery.js</code></th><td><code>text/javascript; charset=utf-8</code></td><td><code>no-cache</code></td><td class="num">11,196 B</td><td class="ok">200</td></tr>
           <tr><th scope="row"><code>config.js</code></th><td><code>text/javascript; charset=utf-8</code></td><td><code>no-cache</code></td><td class="num">594 B</td><td class="ok">200</td></tr>
           <tr><th scope="row"><code>bgm.mp3</code></th><td><code>audio/mpeg</code></td><td><code>public, max-age=86400</code></td><td class="num">6,203,098 B</td><td class="ok">200</td></tr>
           <tr><th scope="row"><code>check.html</code></th><td><code>text/html; charset=utf-8</code></td><td><code>no-cache</code></td><td class="num">4,277 B</td><td class="ok">200</td></tr>
           <tr><th scope="row"><code>art/</code> の 4 点</th><td><code>image/png</code></td><td><code>no-cache</code></td><td class="num">253,154 B</td><td class="ok">200</td></tr>
-          <tr><th scope="row"><code>making.html</code></th><td><code>text/html; charset=utf-8</code></td><td><code>no-cache</code></td><td class="num">30,817 B</td><td style="color:var(--muted)">この頁</td></tr>
-          <tr><th scope="row">合計</th><td colspan="2" style="color:var(--muted)">圧縮なしで、保存したまま返します</td><td class="num"><b>6,609,737 B</b></td><td style="color:var(--muted)">10 行</td></tr>
+          <tr><th scope="row"><code>making.html</code></th><td><code>text/html; charset=utf-8</code></td><td><code>no-cache</code></td><td class="num">33,825 B</td><td style="color:var(--muted)">この頁</td></tr>
+          <tr><th scope="row">合計</th><td colspan="2" style="color:var(--muted)">圧縮なしで、保存したまま返します</td><td class="num"><b>6,618,964 B</b></td><td style="color:var(--muted)">10 行</td></tr>
         </tbody>
       </table>
-      <p style="margin:.7rem 0 0;font-size:.82rem;color:var(--muted)">このページを 1 枚にした <code>architecture.png</code>（2240×8354、約 0.71 MB）も同じ場所に置いてあります。これは<b>この表を含む画像</b>なので、正確なバイト数を表に書くと数字が決まりません（書き換えるたび PNG の圧縮結果が変わり、その結果がまた画像に写る）。ここだけ概数にしてあります。この表の合計にも、この画像は入れていません。</p>
+      <p style="margin:.7rem 0 0;font-size:.82rem;color:var(--muted)">このページを 1 枚にした <code>architecture.png</code>（2240×8899、約 0.82 MB）も同じ場所に置いてあります。これは<b>この表を含む画像</b>なので、正確なバイト数を表に書くと数字が決まりません（書き換えるたび PNG の圧縮結果が変わり、その結果がまた画像に写る）。ここだけ概数にしてあります。この表の合計にも、この画像は入れていません。</p>
     </div>
   </section>
 
@@ -458,8 +476,15 @@ footer a { color: var(--accent); }
         名前欄を置くと、そこに何を書かれるか管理しきれません。
         自分の投稿だけは消せるよう、投稿時に<b>取り消し札</b>を 1 回だけ返し、端末側に持たせています。
         サーバーには札そのものではなく、潰した形でしか残していません。</span></p>
-      <p class="note"><b>一覧は動かない画像にした</b><span>ブラウザが同時に持てる WebGL は 8〜16 個ほどしかなく、
-        全部を動くカップにすると数十件で破綻します。並ぶのは PNG で、動くのは選んだ 1 杯だけにしました。</span></p>
+      <p class="note"><b>一覧を「机」に作り直した</b><span>はじめは小さな一覧から 1 つ選ぶ形にしていましたが、
+        作品が小さく、何をするページなのか伝わりませんでした。いまは区切りの無い 1 枚板の上を
+        カップが流れていき、<b>なぞるとその場で崩れます</b>。手を置いているあいだは机が止まります。</span></p>
+      <p class="note"><b>席は決め打ちにして使い回す</b><span>ブラウザが同時に持てる WebGL は 8〜16 個ほどしかなく、
+        全部の投稿を動くカップにすると数十件で破綻します。席の数を画面幅から決め（1440 で 8 席、390 で 4 席）、
+        左端から出ていった席に次の作品を注ぎ直しています。投稿が何百件に増えても重さは変わりません。</span></p>
+      <p class="note"><b>入れた画像は投稿させない</b><span>いちばん下の杯には「指で描く」と「画像から作る」がありますが、
+        投稿できるのは前者だけにしました。他の人の写真や絵が、そのままみんなのページに並んでしまわないようにするためです。
+        見出しと枠で 2 つに分け、画像が入っているあいだは投稿ボタンを押せなくして、理由をその場に出しています。</span></p>
       <p class="note"><b>403 で半日止まった</b><span>Function URL を公開にしたのに、呼ぶと 403 が返り続けました。
         2025 年 10 月から、<code>lambda:InvokeFunctionUrl</code> と <code>lambda:InvokeFunction</code> の
         <b>両方</b>の許可が要る仕様に変わっていたためです。関数を直接呼ぶと動くのに URL だと落ちる、で切り分けました。</span></p>
@@ -473,13 +498,13 @@ footer a { color: var(--accent); }
     <h2>この構成について確認できていること</h2>
     <div class="body notes">
       <p class="note"><b>費用はほぼゼロ</b><span>Cost Explorer の実測で 8 月 <code>0.0000000006 USD</code>、9 月 1〜10 日 <code>-0.0000000002 USD</code>。無料枠の中です（2026-09-09 時点）。</span></p>
-      <p class="note"><b>CloudFront は入れていない</b><span>入れれば「短い URL ＋ HTTPS」が両立し、圧縮も効きます。代わりに配信開始まで 5〜15 分かかります。</span></p>
+      <p class="note"><b>あとから CloudFront を足した</b><span>S3 のウェブサイト用の入口は HTTPS に対応していないため、ブラウザが「安全な接続をサポートしていません」と警告を出していました。CloudFront を 1 つ挟んで解決しています。<code>http://</code> で来た人は <code>301</code> で <code>https://</code> へ送られ、ルートでトップが開き、圧縮も効きます（実測で <code>latte.js</code> 67,740 B → 19,859 B、<code>style.css</code> 30,272 B → 7,647 B。いずれも Brotli）。配信が始まるまで 10 分ほどかかりました。</span></p>
       <p class="note"><b>バケットは読み取り専用で公開</b><span>バケットポリシーは <code>s3:GetObject</code> の 1 文だけ。匿名での <code>PUT</code>／<code>DELETE</code>／一覧取得は、実際に叩いて 3 つとも <code>403</code> を確認しました（2026-10-01）。</span></p>
       <p class="note"><b>ページは鍵を持ちません</b><span>JavaScript に認証情報は 1 つも書いていません。ブラウザが外に出すのは、みんなのラテアートの <code>fetch</code> だけです。宛先は <code>config.js</code> に書いた URL 1 本で、鍵を添えずに呼びます。できることは Lambda 側が決めていて、ブラウザからは投稿・一覧・いいね・自分の取り消ししか頼めません。</span></p>
       <p class="note"><b>投稿の受け口は絞ってある</b><span>Lambda に持たせた役割が触れるのは、投稿を入れる 1 テーブルだけ。他の AWS の資源には手が届きません。同時に動く本数も 5 までにしてあるので、呼ばれ続けても請求は頭打ちになります。</span></p>
       <p class="note"><b>ブラウザ側の必要条件</b><span>WebGL2 と <code>EXT_color_buffer_float</code>。無い環境では、カップの代わりに理由を書いた文が出ます。</span></p>
       <p class="note"><b>更新は数行</b><span><code>aws s3 cp</code> を並べるだけ。<code>index.html</code> は <code>no-cache</code> なので、置いた瞬間から反映されます。</span></p>
-      <p class="note"><b>重いのは音源</b><span>約 7.0 MB のうち 5.92 MB が <code>bgm.mp3</code>、0.71 MB が構成図の PNG、0.24 MB が手描きの型 4 点。残り全部を足しても 0.15 MB しかありません。<code>preload="metadata"</code> なので、開いた時点では音源の本体を落としません。構成図の PNG は 3 倍で撮っていたのを 2 倍にし、256 色に減らして 1.34 MB から 0.71 MB に落としました。元画像との画素のずれは平均 0.1／255 で、文字の明暗幅は変わっていません。</span></p>
+      <p class="note"><b>重いのは音源</b><span>約 7.1 MB のうち 5.92 MB が <code>bgm.mp3</code>、0.82 MB が構成図の PNG、0.24 MB が手描きの型 4 点。残り全部を足しても 0.16 MB しかありません。<code>preload="metadata"</code> なので、開いた時点では音源の本体を落としません。構成図の PNG は 3 倍で撮っていたのを 2 倍にし、256 色に減らして 1.34 MB から 0.82 MB に落としました。元画像との画素のずれは平均 0.1／255 で、文字の明暗幅は変わっていません。</span></p>
     </div>
   </section>
 

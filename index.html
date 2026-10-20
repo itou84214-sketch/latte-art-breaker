@@ -177,41 +177,52 @@
       注ぎ口をあなたの指に繋いであります。上の3杯とまったく同じ計算です。
       なぞった跡にミルクが乗り、まわりの泡は外へ押しのけられます。
       描けたら「崩す」に切り替えて、ぐしゃぐしゃにしてください。
-      描くかわりに、手持ちの画像を注ぐこともできます。
     </p>
 
-    <div class="seg seg--wide" role="group" aria-label="指の役割">
-      <button type="button" class="seg__btn" data-mode="draw"  aria-pressed="true">描く</button>
-      <button type="button" class="seg__btn" data-mode="erase" aria-pressed="false">消す</button>
-      <button type="button" class="seg__btn" data-mode="stir"  aria-pressed="false">崩す</button>
-    </div>
+    <!-- 遊びかたは 2 つ。どちらの杯も同じですが、投稿できるのは指で描いたものだけです。
+         取り違えないよう、見出しと枠で分けてあります。 -->
+    <div class="way way--draw">
+      <p class="way__tag">A</p>
+      <h3 class="way__title">指で描く</h3>
+      <p class="way__lead">描いたものは みんなのラテアートへ投稿できます</p>
 
-    <label class="brush">
-      <span>注ぎ口の太さ</span>
-      <input data-brush type="range" min="0.020" max="0.120" step="0.005" value="0.055">
-    </label>
-
-    <div class="stage__btns">
-      <button type="button" class="btn btn--primary" data-act="clear">まっさらにする</button>
-    </div>
-
-    <div class="mine">
-      <p class="mine__lead">もしくは画像を入れてオリジナルのラテアートを作ろう</p>
-      <div class="mine__row">
-        <label class="btn btn--file">画像をえらぶ
-          <input class="vh" type="file" accept="image/*" data-photo>
-        </label>
+      <div class="seg seg--wide" role="group" aria-label="指の役割">
+        <button type="button" class="seg__btn" data-mode="draw"  aria-pressed="true">描く</button>
+        <button type="button" class="seg__btn" data-mode="erase" aria-pressed="false">消す</button>
+        <button type="button" class="seg__btn" data-mode="stir"  aria-pressed="false">崩す</button>
       </div>
-      <label class="mine__chk"><input type="checkbox" data-photo-invert> 白と黒が逆のときはここ</label>
-      <p class="mine__note" data-photo-note>紙に描いて撮った写真でも、お絵かきアプリの PNG でも大丈夫です。カップに直接ドラッグしても入ります。入れたあと、そのまま指で描き足せます。消すときは「まっさらにする」。</p>
+
+      <label class="brush">
+        <span>注ぎ口の太さ</span>
+        <input data-brush type="range" min="0.020" max="0.120" step="0.005" value="0.055">
+      </label>
+
+      <div class="stage__btns">
+        <button type="button" class="btn btn--primary" data-act="clear">まっさらにする</button>
+      </div>
+
+      <div class="post" hidden>
+        <p class="post__note" data-post-note>投稿すると、ほかの人が見たり ハートを送ったり 崩したりできます。名前は付きません</p>
+        <div class="post__row">
+          <button type="button" class="btn btn--primary" data-act="post">みんなに見せる</button>
+          <a class="btn btn--ghost" href="gallery.html">みんなの作品を見る</a>
+        </div>
+      </div>
     </div>
 
-    <div class="post" hidden>
-      <p class="post__lead">描けたら みんなのラテアートへ</p>
-      <p class="post__note" data-post-note>投稿すると、ほかの人が見たり いいねしたり 崩したりできます。名前は付きません</p>
-      <div class="post__row">
-        <button type="button" class="btn btn--primary" data-act="post">みんなに見せる</button>
-        <a class="btn btn--ghost" href="gallery.html">みんなの作品を見る</a>
+    <div class="way way--photo">
+      <p class="way__tag">B</p>
+      <h3 class="way__title">画像から作る</h3>
+      <p class="way__lead way__lead--warn">こちらは投稿できません。この画面で崩して楽しむだけです</p>
+
+      <div class="mine">
+        <div class="mine__row">
+          <label class="btn btn--file">画像をえらぶ
+            <input class="vh" type="file" accept="image/*" data-photo>
+          </label>
+        </div>
+        <label class="mine__chk"><input type="checkbox" data-photo-invert> 白と黒が逆のときはここ</label>
+        <p class="mine__note" data-photo-note>紙に描いて撮った写真でも、お絵かきアプリの PNG でも大丈夫です。カップに直接ドラッグしても入ります。入れたあと、そのまま指で描き足せます。消すときは「まっさらにする」。</p>
       </div>
     </div>
   </div>
