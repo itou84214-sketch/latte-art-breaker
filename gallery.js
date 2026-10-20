@@ -125,6 +125,8 @@
           '<span class="vh">この一杯にハートを送る</span>' +
         '</button>' +
         '<span class="seat__when"></span>' +
+        // 自分が描いた一杯だけに出ます。ほかの人の一杯には出ません。
+        '<span class="seat__mine" hidden>あなたの一杯</span>' +
         '<button type="button" class="seat__drop" hidden>取り消す</button>' +
       '</div>';
 
@@ -136,6 +138,7 @@
       heart: el.querySelector('.heart'),
       num: el.querySelector('.heart__n'),
       whenEl: el.querySelector('.seat__when'),
+      mineEl: el.querySelector('.seat__mine'),
       dropBtn: el.querySelector('.seat__drop'),
       post: null,
       x: 0
@@ -148,8 +151,26 @@
     return seat;
   }
 
+  // 自分が描いた一杯かどうかを、席の見た目に反映します。
+  // 判断のもとは、投稿したときにこの端末へ控えた「消すための鍵」です。
+  // 鍵を持っていない人には札もボタンも出ませんし、持っていない人が
+  // 消そうとしても置き場が断ります（鍵なし 400／違う鍵 403）。
+  function markMine(seat) {
+    var mine = !!(seat.post && myToken(seat.post.id));
+    seat.el.setAttribute('data-mine', mine ? '1' : '0');
+    seat.mineEl.hidden = !mine;
+    seat.dropBtn.hidden = !mine;
+    var cv = seat.cup && seat.cup.canvas;
+    if (cv) {
+      cv.setAttribute('aria-label', (mine ? 'あなたが描いたラテアート。' : 'だれかのラテアート。')
+                                  + 'なぞると崩れます。');
+    }
+  }
+
   function serve(seat, post) {
     seat.post = post;
+    // 席を使い回すので、絵が無いときも札とボタンを片づけます
+    markMine(seat);
     if (!post) return;
     var im = new Image();
     im.onload = function () {
@@ -161,7 +182,6 @@
 
     paintHeart(seat);
     seat.whenEl.textContent = when(post.created);
-    seat.dropBtn.hidden = !myToken(post.id);
   }
 
   function paintHeart(seat) {
@@ -211,7 +231,8 @@
     if (!post) return;
     var token = myToken(post.id);
     if (!token) return;
-    if (!window.confirm('この投稿を取り消します。元に戻せません。')) return;
+    if (!window.confirm('あなたが描いたこの一杯を、みんなのラテアートから'
+                      + '取り消します。元に戻せません。')) return;
 
     seat.dropBtn.disabled = true;
     fetch(API, {
@@ -225,7 +246,7 @@
         forgetPost(post.id);
         posts = posts.filter(function (p) { return p.id !== post.id; });
         seats.forEach(function (s) {
-          if (s.post && s.post.id === post.id) { s.post = null; s.dropBtn.hidden = true; }
+          if (s.post && s.post.id === post.id) { s.post = null; markMine(s); }
         });
         if (!posts.length) {
           fail('机が空になりました。もう一度描いてみませんか');

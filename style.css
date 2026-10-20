@@ -1221,3 +1221,23 @@ input[type="checkbox"] { accent-color: var(--accent); width: 15px; height: 15px;
   /* 「自分で描く」の杯だけは別。上下にも自由に描けないと困ります。 */
   [data-slot] canvas[data-cup] { touch-action: none; }
 }
+/* ===== 自分の一杯のしるし ===== */
+/* 「取り消す」は自分が描いた一杯にだけ出ます。ほかの人の一杯には出ません。
+   出ている理由がその場で分かるよう、札と縁の色をそろえて付けます。 */
+.seat__mine {
+  padding: 0.12rem 0.44rem;
+  border-radius: 999px;
+  background: rgba(232, 160, 140, 0.16);
+  color: #e8a08c;
+  font-family: var(--ui);
+  font-size: 0.7rem;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+.seat[data-mine="1"] .seat__cup canvas { outline: 2px solid rgba(232, 160, 140, 0.45); }
+.seat[data-mine="1"] .seat__drop { color: #e8a08c; background: rgba(232, 160, 140, 0.12); }
+
+/* 狭い画面では札だけ残し、日付を落として横幅を稼ぎます */
+@media (max-width: 700px) {
+  .seat__mine { font-size: 0.72rem; }
+}

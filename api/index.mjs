@@ -25,7 +25,12 @@ const db    = new DynamoDBClient({});
 const TABLE = process.env.TABLE || 'latte-art-posts';
 
 // --- 制限値 ---------------------------------------------------------------
-const MAX_PNG   = 60_000;   // data URL の文字数。384x384 の白黒なら 2 万字ほど
+const MAX_PNG   = 120_000;  // data URL の文字数
+// 画面側は 384x384 の絵を白黒 PNG にして送ります。実測で、びっしり描いた絵が
+// 24,634 字、それを崩した絵が 38,190 字。上限はその 3 倍ほどに取っています。
+// 以前は 60,000 字で、画面側が赤緑青＋透明の 4 色ぶんを書いていたため、
+// 崩した絵が 87,338 字になって弾かれていました。古い画面がまだ開いたままでも
+// 通るように、その値より上に置いています。
 const MAX_LIST  = 48;       // 1 回に返す件数
 const COOL_SEC  = 20;       // 同じ相手からの連続投稿を断る秒数
 const KEEP_DAYS = 365;      // この日数が過ぎた投稿は DynamoDB が自動で消す
@@ -122,7 +127,9 @@ async function create(body, event) {
     return reply(400, { error: 'PNG の画像ではありません' });
   }
   if (png.length > MAX_PNG) {
-    return reply(413, { error: '絵が大きすぎます' });
+    return reply(413, {
+      error: '絵が重すぎて送れませんでした。ページを読み込み直してから、もう一度どうぞ',
+    });
   }
 
   // 同じ相手からの連続投稿を断る。鍵には IP をそのまま使わず、

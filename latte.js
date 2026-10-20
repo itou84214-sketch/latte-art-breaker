@@ -1518,6 +1518,150 @@
     } catch (e) { /* 覚えられなくても投稿自体は済んでいます */ }
   }
 
+  // ---- 投稿する絵を PNG にする -------------------------------------------
+  //  絵は白黒（赤＝緑＝青、透明なし）です。それなのに canvas の toDataURL は
+  //  赤・緑・青・透明の 4 色ぶんを書き出すので、同じ絵が倍以上重くなります。
+  //  実測すると、描いたあと崩した絵が 87,338 字になり、置き場の上限
+  //  60,000 字を超えて「絵が大きすぎます」と弾かれていました。
+  //  そこで PNG を自分で組み、明るさ 1 色ぶんだけ書きます（24〜38 千字）。
+  //  見た目は 1 ドットも変わりません。
+  var CRCTAB = null;
+  function crc32(buf) {
+    if (!CRCTAB) {
+      CRCTAB = new Uint32Array(256);
+      for (var n = 0; n < 256; n++) {
+        var c = n;
+        for (var k = 0; k < 8; k++) c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1);
+        CRCTAB[n] = c >>> 0;
+      }
+    }
+    var v = 0xFFFFFFFF;
+    for (var i = 0; i < buf.length; i++) v = CRCTAB[(v ^ buf[i]) & 0xFF] ^ (v >>> 8);
+    return (v ^ 0xFFFFFFFF) >>> 0;
+  }
+
+  function pngChunk(type, data) {
+    var out = new Uint8Array(12 + data.length);
+    var dv  = new DataView(out.buffer);
+    dv.setUint32(0, data.length);
+    for (var i = 0; i < 4; i++) out[4 + i] = type.charCodeAt(i);
+    out.set(data, 8);
+    dv.setUint32(8 + data.length, crc32(out.subarray(4, 8 + data.length)));
+    return out;
+  }
+
+  // PNG の中身は zlib で縮めます。ブラウザに入っている CompressionStream を
+  // 借りるので、縮める処理を自分で書く必要はありません。
+  function zlib(bytes) {
+    var cs = new CompressionStream('deflate');
+    var w  = cs.writable.getWriter();
+    w.write(bytes);
+    w.close();
+    var parts = [];
+    var rd = cs.readable.getReader();
+    return (function pump() {
+      return rd.read().then(function (step) {
+        if (!step.done) { parts.push(step.value); return pump(); }
+        var n = 0, i;
+        for (i = 0; i < parts.length; i++) n += parts[i].length;
+        var all = new Uint8Array(n), at = 0;
+        for (i = 0; i < parts.length; i++) { all.set(parts[i], at); at += parts[i].length; }
+        return all;
+      });
+    })();
+  }
+
+  function base64(bytes) {
+    var t = '';
+    for (var i = 0; i < bytes.length; i += 4096)
+      t += String.fromCharCode.apply(null, bytes.subarray(i, i + 4096));
+    return btoa(t);
+  }
+
+  //  PNG は行ごとに「前の値との差で書く」やり方を選べます。5 通り試して、
+  //  いちばん差が小さくなるものを行ごとに選びます（PNG の定石）。
+  function grayPNG(cv) {
+    var S = cv.width;
+    var d = cv.getContext('2d').getImageData(0, 0, S, S).data;
+    var raw = new Uint8Array((S + 1) * S);
+    var cand = [];
+    for (var f = 0; f < 5; f++) cand.push(new Uint8Array(S));
+
+    for (var y = 0; y < S; y++) {
+      var sum = [0, 0, 0, 0, 0];
+      for (var x = 0; x < S; x++) {
+        var v = d[(y * S + x) * 4];
+        var a = x ? d[(y * S + x - 1) * 4] : 0;                  // 左
+        var b = y ? d[((y - 1) * S + x) * 4] : 0;                // 上
+        var c = (x && y) ? d[((y - 1) * S + x - 1) * 4] : 0;     // 左上
+        var pr = a + b - c;
+        var pa = Math.abs(pr - a), pb = Math.abs(pr - b), pc = Math.abs(pr - c);
+        var pt = (pa <= pb && pa <= pc) ? a : (pb <= pc ? b : c);
+        var e = [v, v - a, v - b, v - ((a + b) >> 1), v - pt];
+        for (var f2 = 0; f2 < 5; f2++) {
+          var u = e[f2] & 255;
+          cand[f2][x] = u;
+          sum[f2] += u < 128 ? u : 256 - u;
+        }
+      }
+      var best = 0;
+      for (var f3 = 1; f3 < 5; f3++) if (sum[f3] < sum[best]) best = f3;
+      var row = y * (S + 1);
+      raw[row] = best;
+      raw.set(cand[best], row + 1);
+    }
+
+    var ihdr = new Uint8Array(13);
+    var dv = new DataView(ihdr.buffer);
+    dv.setUint32(0, S);
+    dv.setUint32(4, S);
+    ihdr[8] = 8;   // 1 色 8 ビット
+    ihdr[9] = 0;   // 白黒（透明なし）
+    return zlib(raw).then(function (z) {
+      var sig = new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10]);
+      var cs = [sig, pngChunk('IHDR', ihdr), pngChunk('IDAT', z),
+                pngChunk('IEND', new Uint8Array(0))];
+      var n = 0, i;
+      for (i = 0; i < cs.length; i++) n += cs[i].length;
+      var all = new Uint8Array(n), at = 0;
+      for (i = 0; i < cs.length; i++) { all.set(cs[i], at); at += cs[i].length; }
+      return 'data:image/png;base64,' + base64(all);
+    });
+  }
+
+  function smaller(cv, S) {
+    var o = document.createElement('canvas');
+    o.width = o.height = S;
+    var g = o.getContext('2d');
+    g.imageSmoothingEnabled = true;
+    g.imageSmoothingQuality = 'high';
+    g.drawImage(cv, 0, 0, S, S);
+    return o;
+  }
+
+  //  収まるまで小さくします。白黒で書ければ 384 のままで済むはずですが、
+  //  古いブラウザだと自分で組めないので、そのときは縮めて収めます。
+  //  （置き場の上限より少し手前で止めて、余裕を持たせます）
+  var POST_MAX  = 100000;
+  var POST_SIZE = [384, 320, 256, 192];
+
+  function encodePost(shot) {
+    var canGray = typeof CompressionStream === 'function';
+    var at = 0;
+    function attempt() {
+      if (at >= POST_SIZE.length) return Promise.resolve(null);
+      var S  = POST_SIZE[at++];
+      var cv = S === shot.width ? shot : smaller(shot, S);
+      var step = canGray
+        ? grayPNG(cv).catch(function () { return cv.toDataURL('image/png'); })
+        : Promise.resolve(cv.toDataURL('image/png'));
+      return step.then(function (url) {
+        return url && url.length <= POST_MAX ? url : attempt();
+      });
+    }
+    return attempt();
+  }
+
   (function bindPost() {
     var box = document.querySelector('.post');
     if (!box) return;
@@ -1565,17 +1709,25 @@
       for (var i = 0; i < d.length; i += 4) ink += d[i];
       if (ink / (64 * 64) < 6) { say('まだ何も描かれていません', 'err'); return; }
 
-      var png = shot.toDataURL('image/png');
       btn.disabled = true;
       say('送っています…');
 
-      fetch(API, {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ action: 'post', png: png })
+      encodePost(shot).then(function (png) {
+        if (!png) {
+          btn.disabled = false;
+          say('この絵は送れませんでした。少し崩してから、もう一度どうぞ', 'err');
+          return null;
+        }
+        return fetch(API, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ action: 'post', png: png })
+        });
       }).then(function (r) {
+        if (!r) return null;
         return r.json().then(function (j) { return { ok: r.ok, body: j }; });
       }).then(function (res) {
+        if (!res) return;
         btn.disabled = false;
         if (!res.ok) { say(res.body.error || '送れませんでした', 'err'); return; }
         rememberPost(res.body.id, res.body.token);
