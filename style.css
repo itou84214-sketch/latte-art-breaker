@@ -1067,8 +1067,32 @@ input[type="checkbox"] { accent-color: var(--accent); width: 15px; height: 15px;
 
 .desk__band {
   position: relative;
+  /* 席をいっぱいに広げても画面に届かないときだけ、帯を狭くして中央に寄せます
+     （--bandw は gallery.js が決めます）。杯はこの帯の中だけを動きます。 */
+  width: var(--bandw, 100%);
+  margin-inline: auto;
+  overflow: hidden;
   height: calc(var(--seatw, 272px) * 1.26);
   touch-action: pan-y;
+}
+/* 中央に寄せたときは、帯の両端でも杯がすっと消えるようにします */
+.desk__band[data-narrow="1"]::before,
+.desk__band[data-narrow="1"]::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: clamp(2rem, 6vw, 5rem);
+  pointer-events: none;
+  z-index: 2;
+}
+.desk__band[data-narrow="1"]::before {
+  left: 0;
+  background: linear-gradient(90deg, #2a1d16, rgba(0, 0, 0, 0));
+}
+.desk__band[data-narrow="1"]::after {
+  right: 0;
+  background: linear-gradient(270deg, #2a1d16, rgba(0, 0, 0, 0));
 }
 .desk__msg {
   margin: 0;

@@ -74,12 +74,17 @@
   function layout() {
     var vw = Math.max(document.documentElement.clientWidth, 320);
     var narrow = vw < 700;
-    var seatW = narrow ? 200 : 272;
-    var most  = narrow ? 4 : 8;
+    var base = narrow ? 200 : 272;   // 杯の幅の下限
+    var wide = narrow ? 240 : 340;   // 杯の幅の上限。これ以上は大きくしません
+    var most = narrow ? 4 : 9;       // WebGL の数の上限
     // トップページでは杯が先に 5 つあるので、さらに減らします
     if (CAP) most = Math.min(most, narrow ? Math.min(3, CAP) : CAP);
-    var need  = Math.ceil(vw / seatW) + 2;
-    return { seatW: seatW, seats: Math.min(most, Math.max(2, need)) };
+
+    // 画面より 1 杯ぶん広く並べます。帯が画面より狭いと、流したときに
+    // 机の右端が空いたままになります。席を増やせないぶんは幅で稼ぎます。
+    var seats = Math.max(2, Math.min(most, Math.ceil((vw + base) / base)));
+    var seatW = Math.min(wide, Math.max(base, Math.ceil((vw + base) / seats)));
+    return { seatW: seatW, seats: seats };
   }
 
   function when(ms) {
@@ -108,7 +113,10 @@
     var el = document.createElement('div');
     el.className = 'seat';
     // 机に無造作に置かれた感じを出すための、席ごとのばらつき
-    el.style.setProperty('--lift', (((i * 37) % 9) - 4) * 4 + 'px');
+    // 下へずらすだけにします。上へ持ち上げると帯の縁で切れてしまいます。
+    // 6px から始めるのは、杯を 2 度ほど傾けてあるぶん（実測 4.5px）
+    // 角が上に出るためです。下は 30px 以上余っています。
+    el.style.setProperty('--lift', 6 + ((i * 37) % 9) * 3 + 'px');
     el.style.setProperty('--tilt', ((((i * 53) % 7) - 3) * 0.7).toFixed(2) + 'deg');
 
     el.innerHTML =
@@ -302,11 +310,21 @@
     SEATW = L.seatW;
     band.style.setProperty('--seatw', SEATW + 'px');
 
-    var n = Math.min(L.seats, Math.max(posts.length, 1));
+    // 席は投稿の数では減らしません。投稿が少ないときは、同じ一杯が
+    // 何度も流れてきます。席を減らすと帯が画面より狭くなり、
+    // 机の右端が空いたままになってしまいます。
+    var n = L.seats;
     total = n * SEATW;
 
-    // 机の幅に足りないときは、流さずに置いたままにします
-    still = slow || total <= document.documentElement.clientWidth;
+    // 席をいっぱいに広げても帯が画面に届かないとき（とても横長の画面）は、
+    // 帯のほうを中央に寄せて、その中で流します。止めてしまうと
+    // 「流れていく机」でなくなるためです。
+    var fills = total > document.documentElement.clientWidth;
+    band.style.setProperty('--bandw', fills ? '100%' : total + 'px');
+    band.setAttribute('data-narrow', fills ? '0' : '1');
+
+    // 動きを控える設定の人だけ、止めたままにします
+    still = slow;
     band.setAttribute('data-still', still ? '1' : '0');
 
     for (var i = 0; i < n; i++) {
