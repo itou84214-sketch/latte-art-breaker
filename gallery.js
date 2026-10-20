@@ -75,15 +75,15 @@
     var vw = Math.max(document.documentElement.clientWidth, 320);
     var narrow = vw < 700;
     var base = narrow ? 200 : 272;   // 杯の幅の下限
-    var wide = narrow ? 240 : 340;   // 杯の幅の上限。これ以上は大きくしません
+    var wide = narrow ? 240 : 360;   // 杯の幅の上限。これ以上は大きくしません
     var most = narrow ? 4 : 9;       // WebGL の数の上限
     // トップページでは杯が先に 5 つあるので、さらに減らします
     if (CAP) most = Math.min(most, narrow ? Math.min(3, CAP) : CAP);
 
-    // 画面より 1 杯ぶん広く並べます。帯が画面より狭いと、流したときに
-    // 机の右端が空いたままになります。席を増やせないぶんは幅で稼ぎます。
-    var seats = Math.max(2, Math.min(most, Math.ceil((vw + base) / base)));
-    var seatW = Math.min(wide, Math.max(base, Math.ceil((vw + base) / seats)));
+    // 「画面のぶん ＋ 袖 1 杯ぶん」並べます。袖が無いと、次の一杯が
+    // 画面の中で現れてしまいます。席を増やせないぶんは幅で稼ぎます。
+    var seats = Math.max(2, Math.min(most, Math.ceil(vw / base) + 1));
+    var seatW = Math.min(wide, Math.max(base, Math.ceil(vw / Math.max(seats - 1, 1)) + 1));
     return { seatW: seatW, seats: seats };
   }
 
@@ -188,7 +188,9 @@
     var im = new Image();
     im.onload = function () {
       if (seat.post !== post) return;      // 注いでいる間に入れ替わったら捨てる
-      seat.cup.setPhoto(im);
+      // 第 2 引数が「注ぐところを見せない」。席が入れ替わるのは画面の外なので、
+      // 流れてくるときにはもう出来上がっています。
+      seat.cup.setPhoto(im, true);
       seat.cup.setMode('stir');
     };
     im.src = post.png;
@@ -276,9 +278,6 @@
   // ---- 机を流す -----------------------------------------------------------
   var slow = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   var SPEED  = 26;        // ひとりでに流れる速さ（1 秒あたり px）
-  var MANUAL = 420;       // 矢印を押しっぱなしにしたときの速さ
-  var push   = 0;         // 押しているあいだの速さ（右へ送るなら ＋）
-  var pushed = 0;         // いま押しているあいだに進んだ量
   var glide  = 0;         // あと何 px 寄せるか（右へ送るなら ＋）
   var last = 0;
 
@@ -305,9 +304,14 @@
 
     var dx = 0;
     // 手を置いていても止めません。崩しながらでも流れ続けます。
-    if (!still) dx -= SPEED * dt;
-    if (push) { var p = push * dt; pushed += p; dx += p; }
-    if (glide) {
+    // つかんでいるあいだだけは、指の動きだけで動かします。
+    if (!still && !drag) dx -= SPEED * dt;
+    if (fling && !drag) {
+      dx += fling * dt;
+      fling *= Math.pow(0.0022, dt);           // 1 秒でほぼ止まる
+      if (Math.abs(fling) < 8) fling = 0;
+    }
+    if (glide && !drag) {
       var g = glide * Math.min(1, dt * 8);        // 残りを少しずつ食べてなめらかに
       glide -= g;
       if (Math.abs(glide) < 0.5) { g += glide; glide = 0; }
@@ -318,53 +322,47 @@
   }
 
   // ---- 手で送る -----------------------------------------------------------
-  // 帯を囲いで包み、その中に矢印を置きます。帯は中身を切り落とすので、
-  // 矢印を帯の中に入れると消えてしまいます。
-  var wrap = document.createElement('div');
-  wrap.className = 'bandwrap';
-  band.parentNode.insertBefore(wrap, band);
-  wrap.appendChild(band);
+  //  つかんで払います。カップの上でも、押したまま動かせば机が動きます。
+  //  押さずにカーソルを乗せるだけなら、今までどおり崩れます。
+  //  押しているあいだはカップに指を渡さないので、払いながら崩れません。
+  var drag = null;
+  var fling = 0;          // 離したあとに残る勢い（px/秒）
+  function nowMs() { return window.performance ? performance.now() : Date.now(); }
 
-  function arrow(dir, label, mark) {
-    var b = document.createElement('button');
-    b.type = 'button';
-    b.className = 'bandnav bandnav--' + (dir > 0 ? 'prev' : 'next');
-    b.innerHTML = '<span aria-hidden="true">' + mark + '</span>' +
-                  '<span class="vh">' + label + '</span>';
-    wrap.appendChild(b);
+  band.addEventListener('pointerdown', function (e) {
+    if (e.button) return;                      // 右クリックなどは拾わない
+    drag = { id: e.pointerId, last: e.clientX, t: nowMs(), v: 0 };
+    fling = 0;
+    glide = 0;
+    band.setAttribute('data-drag', '1');
+    try { band.setPointerCapture(e.pointerId); } catch (err) {}
+    e.preventDefault();
+    e.stopPropagation();                       // カップに渡さない
+  }, true);
 
-    var held = false;
-    b.addEventListener('pointerdown', function (e) {
-      held = true;
-      pushed = 0;
-      push = dir * MANUAL;
-      try { b.setPointerCapture(e.pointerId); } catch (err) {}
-    });
-    function letGo() {
-      if (!held) return;
-      held = false;
-      push = 0;
-      // 1 回押したら、かならず 1 杯ぶんは送ります。
-      // 押していた時間ではなく進んだ量で見ます。時間で見ると、描画が重い
-      // 端末で「軽く押した」が成立せず、何も起きないことがあります。
-      var left = SEATW - Math.abs(pushed);
-      if (left > 0) glide += dir * left;
-    }
-    ['pointerup', 'pointercancel', 'pointerleave'].forEach(function (t) {
-      b.addEventListener(t, letGo);
-    });
-    // キーボードでも送れるように（Enter / Space）
-    b.addEventListener('keydown', function (e) {
-      if (e.key === 'Enter' || e.key === ' ' || e.key === 'Spacebar') {
-        e.preventDefault();
-        glide += dir * SEATW;
-      }
-    });
-    return b;
+  band.addEventListener('pointermove', function (e) {
+    if (!drag || e.pointerId !== drag.id) return;
+    var dx = e.clientX - drag.last;
+    drag.last = e.clientX;
+    var t = nowMs();
+    var dt = Math.max(t - drag.t, 1) / 1000;
+    drag.t = t;
+    // 1 コマぶんの速さは跳ねやすいので、ならしてから勢いにします
+    drag.v = drag.v * 0.6 + (dx / dt) * 0.4;
+    if (dx) shift(dx);
+    e.preventDefault();
+    e.stopPropagation();
+  }, true);
+
+  function endDrag(e) {
+    if (!drag || (e && e.pointerId !== drag.id)) return;
+    fling = Math.max(-2600, Math.min(2600, drag.v || 0));
+    drag = null;
+    band.removeAttribute('data-drag');
   }
-
-  arrow( 1, '前の一杯へ', '◀');
-  arrow(-1, '次の一杯へ', '▶');
+  ['pointerup', 'pointercancel'].forEach(function (t) {
+    band.addEventListener(t, endDrag, true);
+  });
 
   // 横向きのホイール（Shift ＋ ホイールでも）。
   // 縦のホイールは取りません。取ると机の上でページを下に送れなくなります。
@@ -375,6 +373,15 @@
     e.preventDefault();
     glide -= dx;
   }, { passive: false });
+
+  // キーボードでも送れるように。帯に焦点を当てて左右キー。
+  band.tabIndex = 0;
+  band.setAttribute('role', 'group');
+  band.setAttribute('aria-label', 'みんなのラテアート。左右キーで送れます');
+  band.addEventListener('keydown', function (e) {
+    if (e.key === 'ArrowLeft')  { e.preventDefault(); glide += SEATW; }
+    if (e.key === 'ArrowRight') { e.preventDefault(); glide -= SEATW; }
+  });
 
   // ---- 読み込み -----------------------------------------------------------
   function build() {
@@ -388,11 +395,11 @@
     var n = L.seats;
     total = n * SEATW;
 
-    // 席をいっぱいに広げても帯が画面に届かないとき（とても横長の画面）は、
-    // 帯のほうを中央に寄せて、その中で流します。止めてしまうと
-    // 「流れていく机」でなくなるためです。
-    var fills = total > document.documentElement.clientWidth;
-    band.style.setProperty('--bandw', fills ? '100%' : total + 'px');
+    // 帯は「見えるぶん ＋ 袖 1 杯ぶん」必要です。袖が取れないほど横長な
+    // 画面では、帯のほうを 1 杯ぶん狭めて中央に寄せます。止めてしまうと
+    // 「流れていく机」でなくなるので、狭めてでも流します。
+    var fills = total - SEATW >= document.documentElement.clientWidth;
+    band.style.setProperty('--bandw', fills ? '100%' : (total - SEATW) + 'px');
     band.setAttribute('data-narrow', fills ? '0' : '1');
 
     // 動きを控える設定の人だけ、止めたままにします

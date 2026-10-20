@@ -773,6 +773,36 @@
       pointer: { x: 0.5, y: 0.5, px: 0.5, py: 0.5, down: false, inside: false, moved: false }
     };
 
+    // ---- 見出しの置き方 ---------------------------------------------------
+    //  文章とカップを 1 かたまりとして、画面の中央に置きます。
+    //  画面での位置は  x(p) = W/2 + k * (p + cx)   （k = H / (2 * view)）
+    //  左右の余りを等しくしたいので「文章の左端 = W - カップの右端」。
+    //  これと「すき間を GAP にする」を連立すると cx = (GAP + 文章の幅) / 2k。
+    var CUP_HALF = 1.30;   // カップの絵の半径（受け皿 1.22・持ち手 1.285・角砂糖 1.34）
+    var HERO_GAP = 140;    // 文章とカップのあいだに置きたい px
+    var HERO_EDGE = 24;    // 画面のふちに残す px
+    var heroMemo = '';     // 同じ大きさなら測り直さない（毎コマ測ると重い）
+    var heroCx = 0;
+
+    function heroPlace(W, H, view) {
+      var key = W + 'x' + H + 'x' + view.toFixed(4);
+      if (key === heroMemo) return heroCx;
+      heroMemo = key;
+      var hero = canvas.parentNode;
+      var copy = hero.querySelector ? hero.querySelector('.hero__copy') : null;
+      var how  = hero.querySelector ? hero.querySelector('.hero__how')  : null;
+      // 文章の幅は実測する。見出しは 2 行に折り返すので、欄の上限とは違う。
+      var T = copy ? Math.max(copy.offsetWidth, how ? how.offsetWidth : 0) : 448;
+      var k = H / (2 * view);
+      var cx = (HERO_GAP + T) / (2 * k);
+      // 右のふちからカップがはみ出さないところまで
+      cx = Math.min(cx, (W / 2 - HERO_EDGE) / k - CUP_HALF);
+      var pad = Math.max(HERO_EDGE, W / 2 - k * (cx + CUP_HALF));
+      if (hero.style) hero.style.setProperty('--heropad', pad.toFixed(1) + 'px');
+      heroCx = cx;
+      return cx;
+    }
+
     function resize() {
       var dpr = Math.min(window.devicePixelRatio || 1, 1.6);
       var w = Math.round(canvas.clientWidth * dpr);
@@ -788,10 +818,11 @@
       if (state.hero) document.body.classList.toggle('wide', wide);
       if (wide) {
         state.view = Math.max(1.52, CONF.NEED / Math.max(aspect * 0.60, 0.01));
-        state.center = [aspect * state.view * 0.40, 0];
+        state.center = [heroPlace(canvas.clientWidth, canvas.clientHeight, state.view), 0];
       } else {
         state.view = Math.max(1.52, CONF.NEED / Math.max(aspect, 0.30));
         state.center = [0, state.hero ? -0.02 : 0];
+        heroMemo = '';
       }
     }
 
@@ -891,6 +922,10 @@
       state.pouring = true;
       drawMask();
       drawPour(0);
+      // 机の杯は「注ぐところを見せない」印を持っています。
+      // 画面に入ったとき（arm）にも restart が走るので、ここで見ておかないと
+      // 帯が画面に入った瞬間、目の前で注ぎ直しが始まってしまいます。
+      if (state.instant) { state.pouring = false; state.pourS = 1; drawPour(1); }
     }
 
     // 画像が入ったか消えたかの知らせ先
@@ -1089,8 +1124,16 @@
         ctx.putImageData(id, 0, 0);
         return out;
       },
-      setPhoto: function (src) { uploadPhoto(src); state.photo = true; restart(); tellPhoto(); },
-      clearPhoto: function () { state.photo = false; restart(); tellPhoto(); },
+      // instant を渡すと、注ぐところを見せずに注ぎ終わった姿で出します。
+      // 机の杯は画面の外で入れ替わるので、流れてくるときには出来上がっています。
+      setPhoto: function (src, instant) {
+        uploadPhoto(src);
+        state.photo = true;
+        state.instant = !!instant;   // 以後の注ぎ直しも見せない
+        restart();
+        tellPhoto();
+      },
+      clearPhoto: function () { state.photo = false; state.instant = false; restart(); tellPhoto(); },
       // 画像が入ったか／消えたかを知りたい人に伝える（投稿ボタンが使います）
       onPhoto: function (fn) { photoWatch.push(fn); },
       setMode: function (m) { state.mode = m; canvas.dataset.mode = m; },

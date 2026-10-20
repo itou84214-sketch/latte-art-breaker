@@ -181,23 +181,10 @@ body.wide .hero {
   padding-right: clamp(2rem, 7vw, 6rem);
 }
 
-/* 画面を広げるほど、文章だけが左端に残ってカップから離れていきます
-   （全画面 1873x1014 で 564px 空いていました）。
-   カップの左端は、シェーダの置き方から画面の大きさだけで決まります。
-     横縦比 1.57 未満 : 0.532 * 画面幅
-     横縦比 1.57 以上 : 0.70 * 画面幅 - 0.263 * 画面高
-   そこから文章の欄（28rem）と間（8rem）を引いた位置に置きます。
-   いまより狭くなることはありません（max で元の値を下回らせない）。 */
-@media (max-aspect-ratio: 157 / 100) {
-  body.wide .hero {
-    padding-left: max(clamp(2rem, 7vw, 6rem), min(60rem, 53.2vw - 36rem));
-  }
-}
-@media (min-aspect-ratio: 157 / 100) {
-  body.wide .hero {
-    padding-left: max(clamp(2rem, 7vw, 6rem), min(60rem, 70vw - 26.3vh - 36rem));
-  }
-}
+/* 文章の左余白は latte.js が決めます（--heropad）。
+   カップの位置はシェーダが決めるので、CSS だけで釣り合わせられません。
+   片方だけ動かすと、前回のように全体が右へ偏ります。 */
+body.wide .hero { padding-left: var(--heropad, clamp(2rem, 7vw, 6rem)); }
 body.wide .hero__copy {
   grid-column: 1;
   max-width: 28rem;
@@ -1335,40 +1322,18 @@ input[type="checkbox"] { accent-color: var(--accent); width: 15px; height: 15px;
 @media (max-width: 700px) {
   .seat__mine { font-size: 0.72rem; }
 }
-/* ===== 帯を手で送る矢印 ===== */
-/* 帯は中身を切り落とすので、矢印は帯の外側（囲い）に置きます。
-   机のふち（.desk::before / ::after）より手前に出す必要があるため z-index 3。 */
-.bandwrap { position: relative; }
+/* ===== 帯をつかんで払う ===== */
+/* 矢印ボタンはやめました。カップの上でも、押したまま動かせば机が動きます。
+   押さずに乗せるだけなら今までどおり崩れます。 */
+.desk__band { cursor: grab; -webkit-user-select: none; user-select: none; }
+.desk__band[data-drag="1"] { cursor: grabbing; }
 
-.bandnav {
-  position: absolute;
-  top: 50%;
-  z-index: 3;
-  width: 2.9rem;
-  height: 2.9rem;
-  display: grid;
-  place-items: center;
-  padding: 0;
-  border: 0;
-  border-radius: 50%;
-  background: rgba(20, 13, 9, 0.82);
-  color: var(--foam);
-  font-family: var(--ui);
-  font-size: 0.95rem;
-  line-height: 1;
-  cursor: pointer;
-  box-shadow: 0 0 0 2px rgba(201, 138, 75, 0.45), 0 6px 14px rgba(0, 0, 0, 0.5);
-  transform: translateY(-50%);
-  transition: background 0.15s, box-shadow 0.15s;
-}
-.bandnav:hover {
-  background: rgba(40, 27, 18, 0.95);
-  box-shadow: 0 0 0 2px var(--accent), 0 6px 14px rgba(0, 0, 0, 0.5);
-}
-.bandnav:active { transform: translateY(-50%) scale(0.94); }
-.bandnav--prev { left: clamp(0.4rem, 1.6vw, 1.2rem); }
-.bandnav--next { right: clamp(0.4rem, 1.6vw, 1.2rem); }
+/* つかんでいるあいだはカップに指を渡しません。払いながら崩れないように。 */
+.desk__band[data-drag="1"] canvas[data-cup],
+.desk__band[data-drag="1"] .seat__foot { pointer-events: none; }
 
-@media (max-width: 700px) {
-  .bandnav { width: 2.4rem; height: 2.4rem; font-size: 0.85rem; }
+/* キーボードで触れていることが分かるように */
+.desk__band:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
 }
