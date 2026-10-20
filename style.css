@@ -838,3 +838,197 @@ input[type="checkbox"] { accent-color: var(--accent); width: 15px; height: 15px;
   .jazz__btn[aria-pressed="true"] .jazz__notes span { opacity: 1; }
   .btn, .seg__btn { transition: none; }
 }
+/* ===== みんなのラテアート ===== */
+/* =========================================================
+   投稿の区画（index.html の「自分で描く」の中）
+   ========================================================= */
+.post {
+  margin: 1.4rem 0 0 auto;
+  max-width: 22rem;
+  padding-top: 1.2rem;
+  border-top: 2px dashed rgba(201, 138, 75, 0.3);
+  display: grid;
+  gap: 0.55rem;
+  justify-items: end;
+  text-align: right;
+}
+.stage--flip .post { margin-left: 0; margin-right: auto; justify-items: start; text-align: left; }
+
+.post__lead {
+  margin: 0;
+  font-family: var(--ui);
+  font-weight: 700;
+  font-size: 0.82rem;
+  letter-spacing: 0.06em;
+  color: var(--foam);
+}
+.post__row { display: flex; flex-wrap: wrap; gap: 0.6rem; }
+.post__note {
+  margin: 0;
+  font-size: 0.72rem;
+  line-height: 1.85;
+  color: var(--ink-dim);
+}
+.post__note[data-state="ok"]  { color: var(--accent); }
+.post__note[data-state="err"] { color: #e8a08c; }
+
+/* =========================================================
+   みんなのラテアート（gallery.html）
+   ========================================================= */
+.galhead {
+  max-width: 76rem;
+  margin: 0 auto;
+  padding: clamp(2rem, 7vh, 3.6rem) clamp(1rem, 5vw, 4rem) 0;
+  text-align: center;
+}
+.galhead__back {
+  display: inline-block;
+  margin-bottom: 1.4rem;
+  font-family: var(--ui);
+  font-size: 0.8rem;
+  color: var(--accent);
+  text-decoration: none;
+}
+.galhead__back:hover { text-decoration: underline; }
+.galhead__eyebrow {
+  margin: 0;
+  font-family: var(--ui);
+  font-weight: 700;
+  font-size: 0.66rem;
+  letter-spacing: 0.3em;
+  color: var(--accent);
+}
+.galhead__title {
+  margin: 0.5rem 0 0.8rem;
+  font-family: var(--serif);
+  font-weight: 400;
+  font-size: clamp(1.7rem, 5vw, 2.8rem);
+  letter-spacing: 0.08em;
+}
+.galhead__lead {
+  margin: 0;
+  font-size: 0.86rem;
+  line-height: 2;
+  color: var(--ink-dim);
+}
+
+/* ---------- 選んだ一杯 ---------- */
+.pick {
+  max-width: 76rem;
+  margin: clamp(1.6rem, 5vh, 2.6rem) auto 0;
+  padding: 0 clamp(1rem, 5vw, 4rem);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  align-items: center;
+  gap: clamp(1.2rem, 4vw, 3rem);
+}
+.pick__cup canvas {
+  display: block;
+  width: 100%;
+  max-width: 28rem;
+  aspect-ratio: 1 / 1;
+  margin-left: auto;
+  cursor: grab;
+  touch-action: none;
+  border-radius: 10px;
+}
+.pick__cup canvas.stirring { cursor: grabbing; }
+
+.pick__side { display: grid; gap: 0.8rem; justify-items: start; }
+.pick__state {
+  margin: 0;
+  font-family: var(--ui);
+  font-weight: 700;
+  font-size: 0.9rem;
+  letter-spacing: 0.06em;
+  color: var(--foam);
+}
+.pick__btns { display: flex; flex-wrap: wrap; gap: 0.6rem; }
+.pick__hint {
+  margin: 0;
+  font-size: 0.76rem;
+  color: var(--ink-dim);
+}
+
+/* いいねボタン */
+.btn--like { display: inline-flex; align-items: center; gap: 0.45rem; }
+.like__heart { font-size: 1rem; line-height: 1; color: var(--ink-dim); transition: color 0.18s, transform 0.18s; }
+.like__count { font-variant-numeric: tabular-nums; }
+.btn--like[aria-pressed="true"] {
+  background: var(--btn-warm);
+  color: #2a1608;
+  box-shadow: 3px 3px 0 var(--btn-warmd);
+}
+.btn--like[aria-pressed="true"] .like__heart { color: #b4322a; transform: scale(1.18); }
+
+/* ---------- 一覧 ---------- */
+.wall {
+  max-width: 76rem;
+  margin: clamp(2.4rem, 7vh, 4rem) auto 0;
+  padding: clamp(2rem, 5vh, 3rem) clamp(1rem, 5vw, 4rem) 0;
+  border-top: 1px solid var(--line);
+}
+.wall__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(9.5rem, 1fr));
+  gap: clamp(0.8rem, 2.5vw, 1.3rem);
+}
+.card {
+  background: #17100b;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 3px 3px 0 #0a0604;
+  transition: transform 0.1s, box-shadow 0.1s;
+}
+.card:hover { transform: translate(-1px, -1px); box-shadow: 4px 4px 0 #0a0604; }
+.card.is-picked { outline: 3px solid var(--accent); outline-offset: 2px; }
+.card.is-mine::after {
+  content: "じぶん";
+  display: block;
+  margin: 0 0.6rem 0.6rem;
+  padding: 0.1rem 0.4rem;
+  width: fit-content;
+  border-radius: 3px;
+  background: var(--accent);
+  color: #2a1608;
+  font-family: var(--ui);
+  font-weight: 700;
+  font-size: 0.64rem;
+}
+.card__btn {
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: #120c08;
+  cursor: pointer;
+}
+.card__img { display: block; width: 100%; aspect-ratio: 1 / 1; object-fit: contain; }
+.card__foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.4rem;
+  padding: 0.5rem 0.65rem;
+  font-family: var(--ui);
+  font-size: 0.7rem;
+  color: var(--ink-dim);
+}
+.card__likes { display: inline-flex; align-items: center; gap: 0.25rem; color: var(--foam); font-weight: 700; }
+.card__n { font-variant-numeric: tabular-nums; }
+
+.wall__msg {
+  margin: 1.6rem 0 0;
+  text-align: center;
+  font-size: 0.84rem;
+  color: var(--ink-dim);
+}
+.wall__msg[data-state="err"] { color: #e8a08c; }
+.wall__more { margin-top: 1.8rem; text-align: center; }
+
+@media (max-width: 820px) {
+  .pick { grid-template-columns: 1fr; }
+  .pick__cup canvas { margin: 0 auto; }
+  .pick__side { justify-items: center; text-align: center; }
+  .post { margin-left: 0; margin-right: auto; justify-items: start; text-align: left; }
+}

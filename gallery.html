@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>みんなのラテアート ｜ Latte Art Breaker</title>
+<meta name="description" content="みんなが描いたラテアートを見て、いいねして、崩せるページ。">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@400;500&family=Zen+Maru+Gothic:wght@500;700&display=swap">
+<link rel="stylesheet" href="style.css">
+</head>
+<body class="gal">
+
+<header class="galhead">
+  <a class="galhead__back" href="index.html">← 自分で描く</a>
+  <p class="galhead__eyebrow">EVERYONE'S LATTE ART</p>
+  <h1 class="galhead__title">みんなのラテアート</h1>
+  <p class="galhead__lead">
+    だれかが描いた一杯を選ぶと、上のカップに注がれます。<br>
+    そこで好きなだけ崩してください。元の投稿は崩れません
+  </p>
+</header>
+
+<!-- ============ 選んだ作品を大きく出す ============ -->
+<section class="pick" data-cupbox>
+  <div class="pick__cup">
+    <canvas data-cup data-pattern="-1" data-spoon="1" data-sugar="1"
+            aria-label="選んだラテアート。ドラッグするとかき混ざります。"></canvas>
+    <p class="gl-note" hidden></p>
+  </div>
+  <div class="pick__side">
+    <p class="pick__state" data-pick-state>下から一杯えらんでください</p>
+
+    <div class="pick__btns" hidden data-pick-tools>
+      <button type="button" class="btn btn--like" data-act="like" aria-pressed="false">
+        <span class="like__heart" aria-hidden="true">♥</span>
+        <span class="like__count" data-like-count>0</span>
+      </button>
+      <button type="button" class="btn" data-act="spoon">スプーンで回す</button>
+      <button type="button" class="btn btn--primary" data-act="reset">注ぎ直す</button>
+    </div>
+
+    <p class="pick__hint" data-pick-hint hidden>カップの上をなぞると崩れます</p>
+
+    <button type="button" class="btn btn--ghost btn--sm" data-act="erase-mine" hidden>
+      この投稿を取り消す
+    </button>
+  </div>
+</section>
+
+<!-- ============ 一覧 ============ -->
+<main class="wall">
+  <div class="wall__grid" data-wall aria-live="polite"></div>
+  <p class="wall__msg" data-wall-msg>読み込んでいます…</p>
+  <div class="wall__more">
+    <button type="button" class="btn" data-act="more" hidden>もっと見る</button>
+  </div>
+</main>
+
+<div class="bar" role="group" aria-label="すべての杯に効く設定">
+  <label class="bar__item">
+    <span class="bar__name">混ざりやすさ</span>
+    <input id="rng-strength" type="range" min="0.9" max="1.6" step="0.05" value="1">
+    <output id="out-strength">1</output>
+  </label>
+  <label class="bar__item">
+    <span class="bar__name">ゆるさ</span>
+    <input id="rng-visc" type="range" min="0.05" max="0.475" step="0.005" value="0.26">
+    <output id="out-visc">0.26</output>
+  </label>
+  <label class="chk"><input type="checkbox" id="chk-steam" checked> 湯気</label>
+</div>
+
+<footer class="footer">
+  <p>Latte Art Breaker</p>
+  <p class="footer__sub">投稿はすべて名無しです</p>
+</footer>
+
+<script src="config.js"></script>
+<script src="latte.js"></script>
+<script src="gallery.js"></script>
+</body>
+</html>

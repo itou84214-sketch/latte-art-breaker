@@ -8,11 +8,11 @@
 
 | | |
 | --- | --- |
-| 作ったもの | ラテアートを指でかき混ぜて崩せる 1 ページのサイト |
+| 作ったもの | ラテアートを指でかき混ぜて崩せるサイト。描いた一杯を投稿して、ほかの人に崩してもらえます |
 | 使った技術 | WebGL2 / GLSL ES 3.0 / Stable Fluids（圧力投影・MacCormack 移流） |
 | ライブラリ | **なし**。ビルド工程もなし |
-| 置き場所 | Amazon S3 の静的ホスティング |
-| 中身 | HTML 1 枚・CSS 1 枚・JavaScript 1 枚（1,516 行）＋ 手描きの型 4 点 |
+| 置き場所 | Amazon S3（サイト本体）＋ AWS Lambda・DynamoDB（投稿の置き場） |
+| 中身 | HTML 2 枚・CSS 1 枚・JavaScript 3 枚（1,889 行）＋ サーバー側 223 行 ＋ 手描きの型 4 点 |
 
 絵はカップの上に貼りつけてあるのではありません。**手描きの絵をいったん
 「ミルクの濃さ」に変換し、上から注がれる液体としてシミュレーションに載せています。**
@@ -20,9 +20,12 @@
 
 画面いっぱいの 1 杯を先頭に置き、その下に 4 杯を 右→左→右→左 のジグザグに並べました。
 いちばん下の杯では、自分で描いたり、手持ちの画像を注いだりできます。
+描いた一杯は「みんなのラテアート」に投稿でき、別のページでほかの人の作品を見たり、
+いいねを付けたり、崩したりできます（[7. みんなのラテアート](#7-みんなのラテアート)）。
 
 素の HTML / CSS / JavaScript だけで動きます。**ビルド作業は不要**で、
-`index.html` をダブルクリックすれば開きます。
+`index.html` をダブルクリックすれば開きます。投稿機能だけはサーバーが要りますが、
+使わない設定にしておけば、その区画は出ないまま他はそのまま動きます。
 
 技術的に手こずった点は [3. 流体のしくみ](#3-流体のしくみ) の
 「つまずきやすいところ」にまとめました。
@@ -34,9 +37,15 @@
 ```
 latte-art/
 ├── index.html        本体（文章・並び順はここを編集）
+├── gallery.html      みんなのラテアート（投稿の一覧）
 ├── style.css         色・レイアウト（色はファイル先頭の :root で一括変更）
 ├── latte.js          流体シミュレーション本体
+├── gallery.js        一覧の読み込み・いいね・取り消し
+├── config.js         投稿の置き場の URL。ここだけ環境ごとに書き換える
 ├── art/              ラテアートの「型」（a.png 〜 d.png）
+├── api/
+│   ├── index.mjs     投稿を受ける Lambda の中身
+│   └── deploy.sh     AWS 側を一式そろえる道具（何度流しても同じ結果になる）
 ├── makeart.py        手描きの絵を型に焼く道具（公開時は不要）
 ├── check.html        どの型をどの杯に入れるか確かめるページ
 ├── making.html       構成と制作過程の解説ページ
@@ -50,7 +59,9 @@ latte-art/
 - **WebGL2** と **EXT_color_buffer_float**（浮動小数点テクスチャ）が必要です。
   2020 年以降のブラウザならほぼ動きます。
 - 使えない環境では、カップの代わりに理由を書いたメッセージが出ます（真っ黒にはなりません）。
-- ライブラリは一切使っていません。Google Fonts 以外は外部から何も読み込みません。
+- ライブラリは一切使っていません。外部と通信するのは Google Fonts と、
+  みんなのラテアートの投稿を預ける先（`config.js` に書いた URL）だけです。
+  投稿機能を使わない設定なら、後者への通信も起きません。
 
 ---
 
@@ -301,18 +312,100 @@ ITERS: 16,    // 24 から
 
 このフォルダの中身をまるごとアップロードすれば動きます
 （S3 / Netlify / GitHub Pages / 普通のレンタルサーバー、どれでも）。
-ビルドもサーバー側の設定も要りません。
+ビルドは要りません。投稿機能だけは置き場が必要ですが、`config.js` を空のままに
+しておけば、投稿の区画は出ないまま他は全部動きます。
 
 S3 に置くときだけ、`.js` `.css` `.png` `.mp3` の **Content-Type** を明示してください。
 省くと `application/octet-stream` になり、ブラウザが読み込みを拒否します。
 
 ```
-aws s3 cp index.html s3://<バケット>/index.html --content-type "text/html; charset=utf-8" --cache-control "no-cache"
-aws s3 cp style.css  s3://<バケット>/style.css  --content-type "text/css; charset=utf-8"
-aws s3 cp latte.js   s3://<バケット>/latte.js   --content-type "text/javascript; charset=utf-8"
-aws s3 cp art/       s3://<バケット>/art/ --recursive --content-type "image/png" --cache-control "no-cache"
-aws s3 cp bgm.mp3    s3://<バケット>/bgm.mp3    --content-type "audio/mpeg"
+aws s3 cp index.html   s3://<バケット>/index.html   --content-type "text/html; charset=utf-8" --cache-control "no-cache"
+aws s3 cp gallery.html s3://<バケット>/gallery.html --content-type "text/html; charset=utf-8" --cache-control "no-cache"
+aws s3 cp style.css    s3://<バケット>/style.css    --content-type "text/css; charset=utf-8"  --cache-control "no-cache"
+aws s3 cp latte.js     s3://<バケット>/latte.js     --content-type "text/javascript; charset=utf-8" --cache-control "no-cache"
+aws s3 cp gallery.js   s3://<バケット>/gallery.js   --content-type "text/javascript; charset=utf-8" --cache-control "no-cache"
+aws s3 cp config.js    s3://<バケット>/config.js    --content-type "text/javascript; charset=utf-8" --cache-control "no-cache"
+aws s3 cp art/         s3://<バケット>/art/ --recursive --content-type "image/png" --cache-control "no-cache"
+aws s3 cp bgm.mp3      s3://<バケット>/bgm.mp3      --content-type "audio/mpeg"
 ```
 
 型の PNG には `no-cache` を付けておくことをおすすめします。
 長いキャッシュを指定すると、絵を差し替えてもブラウザが取りに来ません。
+
+---
+
+## 7. みんなのラテアート
+
+いちばん下の杯で描いた一杯を投稿すると、`gallery.html` に並びます。
+一覧から 1 つ選ぶと上の大きなカップに注がれ、そこで好きなだけ崩せます。
+**崩しても元の投稿は変わりません**（手元で遊んでいるだけです）。
+
+### 仕組み
+
+```
+ブラウザ ──→ Lambda の Function URL ──→ DynamoDB
+          （HTTPS・鍵なし）          （投稿 1 件 = 1 行）
+```
+
+サーバーは Lambda 1 つだけです。常時動くものが無いので、
+**誰も遊ばない月の料金は 0 円**です。
+
+| | |
+| --- | --- |
+| 絵の形式 | 384×384 の白黒 PNG を data URL にしたもの（2 万字ほど） |
+| 置き場 | DynamoDB の 1 テーブル。投稿も、いいねの数も、連投よけの札も同じ所 |
+| 一覧の並び | `byCreated` という索引で新しい順に引く |
+| 自動削除 | 365 日が過ぎた投稿は DynamoDB が勝手に消す（`expires` の仕掛け） |
+
+### 決めたこと
+
+**名前は付けません。** 投稿に紐づくのは絵と日付だけです。
+名前欄があると、そこに何を書かれるか管理しきれないからです。
+
+**一覧は動かない画像です。** ブラウザが同時に持てる WebGL は 8〜16 個ほどしかなく、
+全部を動くカップにすると数十件で破綻します。動くのは上の 1 つだけにしました。
+
+**いいねは厳密な一人一票ではありません。** 押したものをブラウザ側に覚えて
+二度押しを防いでいるだけなので、消せばまた押せます。
+正確に数えるにはログインが要り、名前を付けない方針と噛み合いません。
+
+**自分の投稿は取り消せます。** 投稿したとき、サーバーは「取り消し札」を 1 回だけ返します。
+これはブラウザ側にだけ残り、サーバーには**合言葉を潰した形**でしか保存していません。
+札を持っている人（＝投稿した端末）しか消せません。
+
+### 荒らしと費用の対策
+
+| 困ること | 手当て |
+| --- | --- |
+| 大量投稿 | 同じ相手からは 20 秒に 1 回まで |
+| 巨大な画像 | 6 万字を超えたら断る |
+| PNG 以外 | 先頭が `data:image/png;base64,` でなければ断る |
+| 他人の投稿を消される | 取り消し札が合わないと断る |
+| 請求が跳ねる | Lambda の同時実行を 5 までに制限（それ以上は待たされるだけ） |
+
+投稿者の IP は**そのまま保存していません**。連投よけのためだけに、
+元に戻せない形（SHA-256）に潰して短期間だけ持ちます。
+
+### 置き場を用意する
+
+AWS を使う場合、`api/deploy.sh` が一式そろえます。何度流しても同じ結果になります。
+
+```
+bash api/deploy.sh
+```
+
+出てきた URL を `config.js` の `LATTE_API` に書いて、`config.js` をアップロードすれば終わりです。
+
+作られるものは 3 つだけです。
+
+1. DynamoDB のテーブル `latte-art-posts`（従量課金・索引・自動削除つき）
+2. Lambda 用の役割 `latte-art-api-role`（**このテーブルしか触れません**）
+3. Lambda 関数 `latte-art-api` と、その入口の URL
+
+> **つまずいたところ** — 2025 年 10 月から、誰でも呼べる Function URL には
+> `lambda:InvokeFunctionUrl` と `lambda:InvokeFunction` の**両方**の許可が要ります。
+> 片方だけだと、関数まで届かずに 403 が返ります。
+>
+> もうひとつ、CORS のヘッダーを Lambda のコードと Function URL の設定の
+> **両方で付けると、`access-control-allow-origin` が 2 つ並んでブラウザが無効と判断します**。
+> このリポジトリでは Function URL 側だけに付けています。

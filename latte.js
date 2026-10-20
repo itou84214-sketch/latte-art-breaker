@@ -247,6 +247,24 @@
     '}'
   ].join('\n');
 
+  // --- いま入っているミルクを、白黒の正方形として取り出す ------------------
+  // 投稿するときに使います。出来上がりは makeart.py が焼く「型」と同じ形式
+  // （白＝ミルク／黒＝コーヒー）なので、そのまま別のカップに注ぎ直せます。
+  var FRAG_EXPORT = [
+    '#version 300 es',
+    'precision highp float;',
+    'in vec2 vUv;',
+    'out vec4 fragColor;',
+    'uniform sampler2D uDye;',
+    COMMON_GLSL,
+    'void main(){',
+    '  vec2 p = simToCup(vUv);',
+    '  float v = clamp(texture(uDye, vUv).x, 0.0, 1.0);',
+    '  v *= smoothstep(CUP_R, CUP_R - 0.01, length(p));',
+    '  fragColor = vec4(v, v, v, 1.0);',
+    '}'
+  ].join('\n');
+
   // --- 注ぐ（焼いた模様を上から下へ現していく）----------------------------
   var FRAG_POUR = [
     '#version 300 es',
@@ -703,7 +721,7 @@
       gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
     }
 
-    var progStroke, progMask, progMaskPhoto, progPour, progVel, progDiv, progJacobi, progGrad, progAdvect, progMac, progRender;
+    var progStroke, progMask, progMaskPhoto, progExport, progPour, progVel, progDiv, progJacobi, progGrad, progAdvect, progMac, progRender;
     var vel, pressure, divergence, dye, dyeF, dyeB, mask;
     var ND = (canvas.clientWidth >= 380 ? CONF.ND : 512);
 
@@ -711,6 +729,7 @@
       progStroke = new Program(FRAG_STROKE);
       progMask   = new Program(FRAG_MASK);
       progMaskPhoto = new Program(FRAG_MASK_PHOTO);
+      progExport    = new Program(FRAG_EXPORT);
       progPour   = new Program(FRAG_POUR);
       progVel    = new Program(FRAG_VEL);
       progDiv    = new Program(FRAG_DIV);
@@ -1008,7 +1027,8 @@
       state.pointer.inside = true;
     });
     canvas.addEventListener('pointerdown', function (e) {
-      canvas.setPointerCapture(e.pointerId);
+      // 指がすぐ離れた後だと例外になることがある。掴み損ねても描画は続ける。
+      try { canvas.setPointerCapture(e.pointerId); } catch (err) {}
       state.pointer.down = true;
       var uv = toSimUV(e.clientX, e.clientY);
       state.pointer.px = state.pointer.x = uv[0];
@@ -1032,6 +1052,37 @@
       restart: restart,
       setPattern: function (id) { state.pattern = id; restart(); },
       // src は「ミルクの濃さ」だけにした正方形の canvas か img
+      // いまカップに入っている絵を 384x384 の白黒 canvas で返す（投稿用）
+      exportMask: function () {
+        var S = 384;
+        var out = document.createElement('canvas');
+        out.width = S; out.height = S;
+        var shot;
+        try {
+          shot = makeFBO(S, S, gl.RGBA8, gl.RGBA, gl.UNSIGNED_BYTE);
+        } catch (e) {
+          console.error(e);
+          return null;
+        }
+        progExport.use();
+        gl.uniform1i(progExport.u.uDye, dye.read.bind(0));
+        blit(shot);
+
+        var px = new Uint8Array(S * S * 4);
+        gl.readPixels(0, 0, S, S, gl.RGBA, gl.UNSIGNED_BYTE, px);
+        gl.deleteFramebuffer(shot.fbo);
+        gl.deleteTexture(shot.tex);
+
+        // readPixels は下から上に並ぶので、canvas に写すときに裏返す
+        var ctx = out.getContext('2d');
+        var id  = ctx.createImageData(S, S);
+        for (var y = 0; y < S; y++) {
+          var src = (S - 1 - y) * S * 4, dst = y * S * 4;
+          for (var x = 0; x < S * 4; x++) id.data[dst + x] = px[src + x];
+        }
+        ctx.putImageData(id, 0, 0);
+        return out;
+      },
       setPhoto: function (src) { uploadPhoto(src); state.photo = true; restart(); },
       clearPhoto: function () { state.photo = false; restart(); },
       setMode: function (m) { state.mode = m; canvas.dataset.mode = m; },
@@ -1433,6 +1484,85 @@
     });
   })();
 
+  // =======================================================================
+  //  みんなのラテアートへ投稿する
+  //  -----------------------------------------------------------------------
+  //  いまカップに入っている絵を 384x384 の白黒 PNG にして送ります。
+  //  名前は送りません。返ってきた「消すための鍵」は、この端末の
+  //  localStorage にだけ残します（なくすと自分でも消せなくなります）。
+  // =======================================================================
+  var API = (window.LATTE_API || '').replace(/[/]+$/, '');
+  var MINE = 'latte-art-breaker/posted';
+
+  function myPosts() {
+    try { return JSON.parse(localStorage.getItem(MINE) || '[]'); }
+    catch (e) { return []; }
+  }
+  function rememberPost(id, token) {
+    try {
+      var list = myPosts();
+      list.push({ id: id, token: token, at: Date.now() });
+      localStorage.setItem(MINE, JSON.stringify(list.slice(-50)));
+    } catch (e) { /* 覚えられなくても投稿自体は済んでいます */ }
+  }
+
+  (function bindPost() {
+    var box = document.querySelector('.post');
+    if (!box) return;
+    // 置き場が決まっていないうちは、区画ごと出しません
+    if (!API) return;
+
+    var btn  = box.querySelector('[data-act="post"]');
+    var note = box.querySelector('[data-post-note]');
+    var help = note ? note.textContent : '';
+    var cup  = cupOf(box.closest('[data-cupbox]'));
+    if (!btn || !cup) return;
+    box.hidden = false;
+
+    function say(msg, kind) {
+      if (!note) return;
+      note.textContent = msg || help;
+      if (kind) note.setAttribute('data-state', kind);
+      else note.removeAttribute('data-state');
+    }
+
+    btn.addEventListener('click', function () {
+      var shot = cup.exportMask && cup.exportMask();
+      if (!shot) { say('絵を取り出せませんでした', 'err'); return; }
+
+      // まっさらなまま送られるのを防ぐ
+      var small = document.createElement('canvas');
+      small.width = small.height = 64;
+      small.getContext('2d').drawImage(shot, 0, 0, 64, 64);
+      var d = small.getContext('2d').getImageData(0, 0, 64, 64).data;
+      var ink = 0;
+      for (var i = 0; i < d.length; i += 4) ink += d[i];
+      if (ink / (64 * 64) < 6) { say('まだ何も描かれていません', 'err'); return; }
+
+      var png = shot.toDataURL('image/png');
+      btn.disabled = true;
+      say('送っています…');
+
+      fetch(API, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ action: 'post', png: png })
+      }).then(function (r) {
+        return r.json().then(function (j) { return { ok: r.ok, body: j }; });
+      }).then(function (res) {
+        btn.disabled = false;
+        if (!res.ok) { say(res.body.error || '送れませんでした', 'err'); return; }
+        rememberPost(res.body.id, res.body.token);
+        say('みんなのラテアートに並びました', 'ok');
+        var link = box.querySelector('a[href="gallery.html"]');
+        if (link) link.textContent = 'ならんだところを見る →';
+      }).catch(function () {
+        btn.disabled = false;
+        say('繋がりませんでした。少し時間をおいてどうぞ', 'err');
+      });
+    });
+  })();
+
   // ---- 共通のつまみ -------------------------------------------------------
   function bindRange(id, outId, apply) {
     var el = document.getElementById(id);
@@ -1512,5 +1642,5 @@
     });
   })();
 
-  window.LatteArt = { conf: CONF, shared: shared, cups: cups, buildMask: buildMask };
+  window.LatteArt = { conf: CONF, shared: shared, cups: cups, buildMask: buildMask, cupOf: cupOf };
 })();

@@ -205,6 +205,15 @@
       <label class="mine__chk"><input type="checkbox" data-photo-invert> 白と黒が逆のときはここ</label>
       <p class="mine__note" data-photo-note>紙に描いて撮った写真でも、お絵かきアプリの PNG でも大丈夫です。カップに直接ドラッグしても入ります。入れたあと、そのまま指で描き足せます。消すときは「まっさらにする」。</p>
     </div>
+
+    <div class="post" hidden>
+      <p class="post__lead">描けたら みんなのラテアートへ</p>
+      <p class="post__note" data-post-note>投稿すると、ほかの人が見たり いいねしたり 崩したりできます。名前は付きません</p>
+      <div class="post__row">
+        <button type="button" class="btn btn--primary" data-act="post">みんなに見せる</button>
+        <a class="btn btn--ghost" href="gallery.html">みんなの作品を見る</a>
+      </div>
+    </div>
   </div>
 </section>
 
@@ -249,6 +258,7 @@
   <source src="bgm.ogg" type="audio/ogg">
 </audio>
 
+<script src="config.js"></script>
 <script src="latte.js"></script>
 </body>
 </html>
