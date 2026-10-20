@@ -162,6 +162,12 @@ body {
   color: var(--ink-dim);
 }
 
+/* 「なぞる」の案内は指を素通しにしてあるので、ボタンだけ受け取れるようにします */
+.hero__reset {
+  margin-top: 0.85rem;
+  pointer-events: auto;
+}
+
 /* 横長のとき：カップを右へ、文章とつかいかたを左に縦積み */
 body.wide .hero {
   grid-template-columns: minmax(0, 30rem) 1fr;
@@ -173,6 +179,24 @@ body.wide .hero {
   gap: clamp(1.1rem, 3.5vh, 2.2rem);
   padding-left: clamp(2rem, 7vw, 6rem);
   padding-right: clamp(2rem, 7vw, 6rem);
+}
+
+/* 画面を広げるほど、文章だけが左端に残ってカップから離れていきます
+   （全画面 1873x1014 で 564px 空いていました）。
+   カップの左端は、シェーダの置き方から画面の大きさだけで決まります。
+     横縦比 1.57 未満 : 0.532 * 画面幅
+     横縦比 1.57 以上 : 0.70 * 画面幅 - 0.263 * 画面高
+   そこから文章の欄（28rem）と間（8rem）を引いた位置に置きます。
+   いまより狭くなることはありません（max で元の値を下回らせない）。 */
+@media (max-aspect-ratio: 157 / 100) {
+  body.wide .hero {
+    padding-left: max(clamp(2rem, 7vw, 6rem), min(60rem, 53.2vw - 36rem));
+  }
+}
+@media (min-aspect-ratio: 157 / 100) {
+  body.wide .hero {
+    padding-left: max(clamp(2rem, 7vw, 6rem), min(60rem, 70vw - 26.3vh - 36rem));
+  }
 }
 body.wide .hero__copy {
   grid-column: 1;
@@ -677,31 +701,63 @@ input[type="checkbox"] { accent-color: var(--accent); width: 15px; height: 15px;
    ========================================================= */
 .jazz {
   max-width: 76rem;
-  margin: clamp(1.4rem, 4vh, 2.2rem) auto 0;
+  /* 上の説明文とくっつきすぎていたので、上下に同じだけ空けます */
+  margin: clamp(2.8rem, 7vh, 4.6rem) auto clamp(2.8rem, 7vh, 4.6rem);
   padding: 0 clamp(1rem, 5vw, 4rem);
   display: flex;
   justify-content: center;
 }
 
+/* 他のボタンと同じ「べた塗り＋ずらした硬い影」に、押せる面の縁を足します。
+   ただの飾り札に見えていたので、縁・影・右端の丸で押せるものだと示します。 */
 .jazz__btn {
   display: flex;
   align-items: center;
   gap: clamp(0.9rem, 3vw, 1.6rem);
   max-width: 40rem;
   width: 100%;
-  padding: clamp(0.9rem, 3vw, 1.2rem) clamp(1.1rem, 4vw, 1.7rem);
+  padding: clamp(0.95rem, 3vw, 1.25rem) clamp(1.1rem, 4vw, 1.5rem);
   border: 0;
-  border-radius: 10px;
-  background: #17100b;
+  border-radius: 12px;
+  background: linear-gradient(180deg, #241810 0%, #180f0a 100%);
   color: var(--ink);
   font: inherit;
   text-align: left;
   cursor: pointer;
-  box-shadow: 4px 4px 0 #0a0604;
+  box-shadow: 5px 5px 0 #0a0604, inset 0 0 0 2px rgba(201, 138, 75, 0.42);
   transition: background 0.18s, transform 0.08s, box-shadow 0.08s;
 }
-.jazz__btn:hover  { background: #20160f; }
-.jazz__btn:active { transform: translate(4px, 4px); box-shadow: 0 0 0 #0a0604; }
+.jazz__btn:hover {
+  background: linear-gradient(180deg, #2e1f15 0%, #1e140d 100%);
+  box-shadow: 5px 5px 0 #0a0604, inset 0 0 0 2px var(--accent);
+}
+.jazz__btn:active {
+  transform: translate(5px, 5px);
+  box-shadow: 0 0 0 #0a0604, inset 0 0 0 2px var(--accent);
+}
+
+/* 右端の丸。止まっているときは ▶、鳴っているときは ■ */
+.jazz__go {
+  flex: 0 0 auto;
+  margin-left: auto;
+  width: 2.6rem;
+  height: 2.6rem;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--btn-warm);
+  color: #2a1608;
+  font-size: 0.9rem;
+  line-height: 1;
+  box-shadow: 0 2px 0 var(--btn-warmd);
+}
+.jazz__go::before { content: "▶"; margin-left: 2px; }
+.jazz__btn[aria-pressed="true"] .jazz__go::before { content: "■"; margin-left: 0; }
+.jazz__btn:hover .jazz__go { background: var(--btn-warm2); }
+
+@media (max-width: 430px) {
+  .jazz__go { width: 2.2rem; height: 2.2rem; font-size: 0.8rem; }
+}
 
 /* ---------- ラッパと音符 ---------- */
 .jazz__art {
@@ -1278,4 +1334,41 @@ input[type="checkbox"] { accent-color: var(--accent); width: 15px; height: 15px;
 /* 狭い画面では札だけ残し、日付を落として横幅を稼ぎます */
 @media (max-width: 700px) {
   .seat__mine { font-size: 0.72rem; }
+}
+/* ===== 帯を手で送る矢印 ===== */
+/* 帯は中身を切り落とすので、矢印は帯の外側（囲い）に置きます。
+   机のふち（.desk::before / ::after）より手前に出す必要があるため z-index 3。 */
+.bandwrap { position: relative; }
+
+.bandnav {
+  position: absolute;
+  top: 50%;
+  z-index: 3;
+  width: 2.9rem;
+  height: 2.9rem;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(20, 13, 9, 0.82);
+  color: var(--foam);
+  font-family: var(--ui);
+  font-size: 0.95rem;
+  line-height: 1;
+  cursor: pointer;
+  box-shadow: 0 0 0 2px rgba(201, 138, 75, 0.45), 0 6px 14px rgba(0, 0, 0, 0.5);
+  transform: translateY(-50%);
+  transition: background 0.15s, box-shadow 0.15s;
+}
+.bandnav:hover {
+  background: rgba(40, 27, 18, 0.95);
+  box-shadow: 0 0 0 2px var(--accent), 0 6px 14px rgba(0, 0, 0, 0.5);
+}
+.bandnav:active { transform: translateY(-50%) scale(0.94); }
+.bandnav--prev { left: clamp(0.4rem, 1.6vw, 1.2rem); }
+.bandnav--next { right: clamp(0.4rem, 1.6vw, 1.2rem); }
+
+@media (max-width: 700px) {
+  .bandnav { width: 2.4rem; height: 2.4rem; font-size: 0.85rem; }
 }

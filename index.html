@@ -38,6 +38,10 @@
       指でも、マウスでも。動かした分だけ崩れます。<br>
       手を止めれば、そこで止まります。
     </p>
+    <!-- 崩しきったあと、最初の一杯に戻すためのボタン -->
+    <button type="button" class="btn btn--primary hero__reset" data-act="reset">
+      注ぎ直す
+    </button>
     <!-- 狭い画面のときだけ出ます（カップの上は指の動きを横取りするため） -->
     <p class="hero__scroll">上下になぞるとページが動き、横になぞると崩れます</p>
   </div>
@@ -75,6 +79,8 @@
       <span class="jazz__title" data-bgm-title>いい感じのジャズ流しますか？</span>
       <span class="jazz__sub" data-bgm-sub>押すと流れます</span>
     </span>
+    <!-- 押せるものだと一目で分かるよう、右端に丸い印を置きます -->
+    <span class="jazz__go" aria-hidden="true"></span>
   </button>
 </section>
 

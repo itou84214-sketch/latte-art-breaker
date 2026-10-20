@@ -99,14 +99,19 @@
   var feed  = 0;          // 次に注ぐ作品の番号
   var SEATW = 0;
   var total = 0;
-  var rolling = true;     // 手を置いているあいだは止める
-  var still = false;      // 作品が少なくて流す必要が無いとき
+  var still = false;      // 動きを控える設定のときだけ、ひとりでには流さない
 
   function nextPost() {
     if (!posts.length) return null;
-    var p = posts[feed % posts.length];
+    var p = posts[((feed % posts.length) + posts.length) % posts.length];
     feed++;
     return p;
+  }
+  // 手で右へ戻したときは、前に出ていた一杯を出し直します
+  function prevPost() {
+    if (!posts.length) return null;
+    feed--;
+    return posts[((feed % posts.length) + posts.length) % posts.length];
   }
 
   function makeSeat(i) {
@@ -270,39 +275,106 @@
 
   // ---- 机を流す -----------------------------------------------------------
   var slow = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  var SPEED = 26;         // 1 秒あたりに流れる px
+  var SPEED  = 26;        // ひとりでに流れる速さ（1 秒あたり px）
+  var MANUAL = 420;       // 矢印を押しっぱなしにしたときの速さ
+  var push   = 0;         // 押しているあいだの速さ（右へ送るなら ＋）
+  var pushed = 0;         // いま押しているあいだに進んだ量
+  var glide  = 0;         // あと何 px 寄せるか（右へ送るなら ＋）
   var last = 0;
 
   function place(seat) {
     seat.el.style.transform = 'translateX(' + seat.x.toFixed(1) + 'px)';
   }
 
+  // dx だけ横へずらす。左右どちらにも回り込みます。
+  function shift(dx) {
+    for (var i = 0; i < seats.length; i++) {
+      var s = seats[i];
+      s.x += dx;
+      // 左端から出たら、右の端へ回して次の一杯を注ぐ
+      while (s.x + SEATW < -4) { s.x += total; serve(s, nextPost()); }
+      // 右端から出たら、左の端へ回して前の一杯を注ぐ
+      while (s.x > total - SEATW + 4) { s.x -= total; serve(s, prevPost()); }
+      place(s);
+    }
+  }
+
   function roll(now) {
     var dt = last ? Math.min((now - last) / 1000, 1 / 15) : 0;
     last = now;
 
-    if (rolling && !still && !document.hidden) {
-      for (var i = 0; i < seats.length; i++) {
-        var s = seats[i];
-        s.x -= SPEED * dt;
-        if (s.x + SEATW < -4) {            // 左端から出た席に、次の一杯を注ぐ
-          s.x += total;
-          serve(s, nextPost());
-        }
-        place(s);
-      }
+    var dx = 0;
+    // 手を置いていても止めません。崩しながらでも流れ続けます。
+    if (!still) dx -= SPEED * dt;
+    if (push) { var p = push * dt; pushed += p; dx += p; }
+    if (glide) {
+      var g = glide * Math.min(1, dt * 8);        // 残りを少しずつ食べてなめらかに
+      glide -= g;
+      if (Math.abs(glide) < 0.5) { g += glide; glide = 0; }
+      dx += g;
     }
+    if (dx) shift(dx);
     requestAnimationFrame(roll);
   }
 
-  // 手を置いているあいだは止める。崩している最中に逃げないように。
-  ['pointerenter', 'pointerdown'].forEach(function (t) {
-    band.addEventListener(t, function () { rolling = false; }, true);
-  });
-  ['pointerleave', 'pointercancel'].forEach(function (t) {
-    band.addEventListener(t, function () { rolling = true; }, true);
-  });
-  band.addEventListener('pointerup', function () { rolling = true; }, true);
+  // ---- 手で送る -----------------------------------------------------------
+  // 帯を囲いで包み、その中に矢印を置きます。帯は中身を切り落とすので、
+  // 矢印を帯の中に入れると消えてしまいます。
+  var wrap = document.createElement('div');
+  wrap.className = 'bandwrap';
+  band.parentNode.insertBefore(wrap, band);
+  wrap.appendChild(band);
+
+  function arrow(dir, label, mark) {
+    var b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'bandnav bandnav--' + (dir > 0 ? 'prev' : 'next');
+    b.innerHTML = '<span aria-hidden="true">' + mark + '</span>' +
+                  '<span class="vh">' + label + '</span>';
+    wrap.appendChild(b);
+
+    var held = false;
+    b.addEventListener('pointerdown', function (e) {
+      held = true;
+      pushed = 0;
+      push = dir * MANUAL;
+      try { b.setPointerCapture(e.pointerId); } catch (err) {}
+    });
+    function letGo() {
+      if (!held) return;
+      held = false;
+      push = 0;
+      // 1 回押したら、かならず 1 杯ぶんは送ります。
+      // 押していた時間ではなく進んだ量で見ます。時間で見ると、描画が重い
+      // 端末で「軽く押した」が成立せず、何も起きないことがあります。
+      var left = SEATW - Math.abs(pushed);
+      if (left > 0) glide += dir * left;
+    }
+    ['pointerup', 'pointercancel', 'pointerleave'].forEach(function (t) {
+      b.addEventListener(t, letGo);
+    });
+    // キーボードでも送れるように（Enter / Space）
+    b.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' || e.key === ' ' || e.key === 'Spacebar') {
+        e.preventDefault();
+        glide += dir * SEATW;
+      }
+    });
+    return b;
+  }
+
+  arrow( 1, '前の一杯へ', '◀');
+  arrow(-1, '次の一杯へ', '▶');
+
+  // 横向きのホイール（Shift ＋ ホイールでも）。
+  // 縦のホイールは取りません。取ると机の上でページを下に送れなくなります。
+  band.addEventListener('wheel', function (e) {
+    var dx = e.deltaX;
+    if (!dx && e.shiftKey) dx = e.deltaY;
+    if (!dx) return;
+    e.preventDefault();
+    glide -= dx;
+  }, { passive: false });
 
   // ---- 読み込み -----------------------------------------------------------
   function build() {
