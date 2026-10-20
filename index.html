@@ -38,6 +38,8 @@
       指でも、マウスでも。動かした分だけ崩れます。<br>
       手を止めれば、そこで止まります。
     </p>
+    <!-- 狭い画面のときだけ出ます（カップの上は指の動きを横取りするため） -->
+    <p class="hero__scroll">上下になぞるとページが動き、横になぞると崩れます</p>
   </div>
 </header>
 
@@ -228,6 +230,27 @@
   </div>
 </section>
 
+<!-- ------------ 5杯目以降：みんなのラテアート（流れる帯） ------------
+     机の作りは gallery.html と同じ道具（gallery.js）です。
+     ここでは杯が 5 つ先にいるので、data-seats で席の数を抑えています。 -->
+<section class="desk desk--inline" data-desk data-seats="4">
+  <div class="desk__head">
+    <p class="stage__num">05</p>
+    <h2 class="stage__title">みんなのラテアート</h2>
+    <p class="desk__lead">
+      だれかが描いた一杯が、机の上を流れていきます。<br>
+      <b>カップの上をなぞると崩れます。</b>気に入ったらハートを送ってください
+    </p>
+  </div>
+
+  <div class="desk__band" data-band aria-live="polite"></div>
+  <p class="desk__msg" data-msg>机を用意しています…</p>
+
+  <div class="desk__more">
+    <a class="btn btn--primary btn--lg" href="gallery.html">みんなのラテアートをぜんぶ見る →</a>
+  </div>
+</section>
+
 
 <!-- ------------ 裏話への導線 ------------ -->
 <section class="making">
@@ -271,5 +294,6 @@
 
 <script src="config.js"></script>
 <script src="latte.js"></script>
+<script src="gallery.js"></script>
 </body>
 </html>

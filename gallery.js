@@ -20,10 +20,13 @@
   var LIKED = 'latte-art-breaker/liked';
   var MINE  = 'latte-art-breaker/posted';
 
-  var band = document.querySelector('[data-band]');
-  var msg  = document.querySelector('[data-msg]');
+  // この区画は gallery.html にも index.html にも置けます
+  var desk = document.querySelector('[data-desk]');
+  if (!desk) return;
+  var band = desk.querySelector('[data-band]');
+  var msg  = desk.querySelector('[data-msg]');
   var hint = document.querySelector('[data-hint]');
-  if (!band) return;
+  if (!band || !msg) return;
 
   function fail(text) {
     msg.textContent = text;
@@ -63,13 +66,20 @@
   }
 
   // ---- 席の数と大きさ -----------------------------------------------------
-  // 幅の狭い端末では WebGL の数を減らします
+  // 幅の狭い端末では WebGL の数を減らします。
+  // トップページでは杯が 5 つ先にいるので、席はさらに少なくします
+  // （data-seats に上限を書いておきます）。
+  var CAP = parseInt(desk.dataset.seats || '0', 10) || 0;
+
   function layout() {
     var vw = Math.max(document.documentElement.clientWidth, 320);
-    var seatW = vw < 700 ? 200 : 272;
-    var most  = vw < 700 ? 4 : 8;
+    var narrow = vw < 700;
+    var seatW = narrow ? 200 : 272;
+    var most  = narrow ? 4 : 8;
+    // トップページでは杯が先に 5 つあるので、さらに減らします
+    if (CAP) most = Math.min(most, narrow ? Math.min(3, CAP) : CAP);
     var need  = Math.ceil(vw / seatW) + 2;
-    return { seatW: seatW, seats: Math.min(most, Math.max(3, need)) };
+    return { seatW: seatW, seats: Math.min(most, Math.max(2, need)) };
   }
 
   function when(ms) {
@@ -292,7 +302,7 @@
       return;
     }
     msg.hidden = true;
-    hint.hidden = false;
+    if (hint) hint.hidden = false;
     requestAnimationFrame(roll);
   }
 
