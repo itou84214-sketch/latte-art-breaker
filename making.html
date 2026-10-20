@@ -214,7 +214,7 @@ footer a { color: var(--accent); }
     </p>
     <ul class="meta">
       <li>リージョン <b>ap-northeast-1</b></li>
-      <li>公開ファイル <b>14 点 / 約 7.4 MB</b></li>
+      <li>公開ファイル <b>14 点 / 約 7.5 MB</b></li>
       <li>ビルド工程 <b>なし</b></li>
       <li>HTTP 実測 <b>2026-10-20</b></li>
     </ul>
@@ -434,18 +434,18 @@ footer a { color: var(--accent); }
         <tbody>
           <tr><th scope="row"><code>index.html</code></th><td><code>text/html; charset=utf-8</code></td><td><code>no-cache</code></td><td class="num">13,398 B</td><td class="ok">200</td></tr>
           <tr><th scope="row"><code>gallery.html</code></th><td><code>text/html; charset=utf-8</code></td><td><code>no-cache</code></td><td class="num">2,641 B</td><td class="ok">200</td></tr>
-          <tr><th scope="row"><code>style.css</code></th><td><code>text/css; charset=utf-8</code></td><td><code>no-cache</code></td><td class="num">35,531 B</td><td class="ok">200</td></tr>
+          <tr><th scope="row"><code>style.css</code></th><td><code>text/css; charset=utf-8</code></td><td><code>no-cache</code></td><td class="num">36,587 B</td><td class="ok">200</td></tr>
           <tr><th scope="row"><code>latte.js</code></th><td><code>text/javascript; charset=utf-8</code></td><td><code>no-cache</code></td><td class="num">73,728 B</td><td class="ok">200</td></tr>
           <tr><th scope="row"><code>gallery.js</code></th><td><code>text/javascript; charset=utf-8</code></td><td><code>no-cache</code></td><td class="num">14,276 B</td><td class="ok">200</td></tr>
           <tr><th scope="row"><code>config.js</code></th><td><code>text/javascript; charset=utf-8</code></td><td><code>no-cache</code></td><td class="num">594 B</td><td class="ok">200</td></tr>
           <tr><th scope="row"><code>bgm.mp3</code></th><td><code>audio/mpeg</code></td><td><code>public, max-age=86400</code></td><td class="num">6,203,098 B</td><td class="ok">200</td></tr>
           <tr><th scope="row"><code>check.html</code></th><td><code>text/html; charset=utf-8</code></td><td><code>no-cache</code></td><td class="num">4,277 B</td><td class="ok">200</td></tr>
           <tr><th scope="row"><code>art/</code> の 4 点</th><td><code>image/png</code></td><td><code>no-cache</code></td><td class="num">253,154 B</td><td class="ok">200</td></tr>
-          <tr><th scope="row"><code>making.html</code></th><td><code>text/html; charset=utf-8</code></td><td><code>no-cache</code></td><td class="num">38,969 B</td><td style="color:var(--muted)">この頁</td></tr>
-          <tr><th scope="row">合計</th><td colspan="2" style="color:var(--muted)">圧縮なしで、保存したまま返します</td><td class="num"><b>6,639,666 B</b></td><td style="color:var(--muted)">10 行</td></tr>
+          <tr><th scope="row"><code>making.html</code></th><td><code>text/html; charset=utf-8</code></td><td><code>no-cache</code></td><td class="num">39,949 B</td><td style="color:var(--muted)">この頁</td></tr>
+          <tr><th scope="row">合計</th><td colspan="2" style="color:var(--muted)">圧縮なしで、保存したまま返します</td><td class="num"><b>6,641,702 B</b></td><td style="color:var(--muted)">10 行</td></tr>
         </tbody>
       </table>
-      <p style="margin:.7rem 0 0;font-size:.82rem;color:var(--muted)">このページを 1 枚にした <code>architecture.png</code>（2240×10630、約 1.07 MB）も同じ場所に置いてあります。これは<b>この表を含む画像</b>なので、正確なバイト数を表に書くと数字が決まりません（書き換えるたび PNG の圧縮結果が変わり、その結果がまた画像に写る）。ここだけ概数にしてあります。この表の合計にも、この画像は入れていません。</p>
+      <p style="margin:.7rem 0 0;font-size:.82rem;color:var(--muted)">このページを 1 枚にした <code>architecture.png</code>（2240×11022、約 1.13 MB）も同じ場所に置いてあります。これは<b>この表を含む画像</b>なので、正確なバイト数を表に書くと数字が決まりません（書き換えるたび PNG の圧縮結果が変わり、その結果がまた画像に写る）。ここだけ概数にしてあります。この表の合計にも、この画像は入れていません。</p>
     </div>
   </section>
 
@@ -502,6 +502,15 @@ footer a { color: var(--accent); }
         狭い画面では重ねるのをやめ、文章・カップ・案内の順に積んでいます。
         カップ自体も <code>pan-y</code> に変えたので、上下になぞればページが動き、横や円を描けば今までどおり崩れます。
         ただし「自分で描く」の杯だけは、上下にも自由に描けないと困るので <code>none</code> のままです。</span></p>
+      <p class="note"><b>縦長の PC 窓で文字がカップに乗っていた</b><span>重ねるかどうかを 2 か所で別々に
+        決めていたのが原因です。JS は「幅 900px 以上 <b>かつ</b> 横縦比 1.15 超」で
+        <code>body.wide</code> を付け、CSS は「幅 820px 以下」で縦に積んでいました。
+        その間（幅はあるけれど縦長の窓、たとえば 950×890）はどちらにも入らず、
+        画面いっぱいのカップの上に文字が乗ったままでした。
+        CSS を <code>@media (max-width: 899px), (max-aspect-ratio: 23 / 20)</code> にして、
+        JS の条件のちょうど裏返しにそろえました。実測 10 通りの窓すべてで重なり 0。
+        カップの大きさに <code>40vh</code> の頭打ちも足し、「カップの上をなぞる」まで
+        画面に収まるようにしています（950×890 で区画 985px → 878px）。</span></p>
       <p class="note"><b>見出しの空きを詰めた</b><span>広い画面で、文章と「カップの上をなぞる」の間が大きく空いていました。
         上を <code>1fr</code>、下を <code>auto</code> の 2 行にしていたためです。
         どちらも <code>auto</code> にして <code>align-content: center</code> で 1 かたまりとして中央に置いたところ、
@@ -543,7 +552,7 @@ footer a { color: var(--accent); }
       <p class="note"><b>投稿の受け口は絞ってある</b><span>Lambda に持たせた役割が触れるのは、投稿を入れる 1 テーブルだけ。他の AWS の資源には手が届きません。同時に動く本数も 5 までにしてあるので、呼ばれ続けても請求は頭打ちになります。</span></p>
       <p class="note"><b>ブラウザ側の必要条件</b><span>WebGL2 と <code>EXT_color_buffer_float</code>。無い環境では、カップの代わりに理由を書いた文が出ます。</span></p>
       <p class="note"><b>更新は数行</b><span><code>aws s3 cp</code> を並べるだけ。<code>index.html</code> は <code>no-cache</code> なので、置いた瞬間から反映されます。</span></p>
-      <p class="note"><b>重いのは音源</b><span>約 7.4 MB のうち 5.92 MB が <code>bgm.mp3</code>、1.07 MB が構成図の PNG、0.24 MB が手描きの型 4 点。残り全部を足しても 0.17 MB しかありません。<code>preload="metadata"</code> なので、開いた時点では音源の本体を落としません。構成図の PNG は 3 倍で撮っていたのを 2 倍にし、256 色に減らして 1.34 MB から 1.07 MB に落としました。元画像との画素のずれは平均 0.1／255 で、文字の明暗幅は変わっていません。</span></p>
+      <p class="note"><b>重いのは音源</b><span>約 7.5 MB のうち 5.92 MB が <code>bgm.mp3</code>、1.13 MB が構成図の PNG、0.24 MB が手描きの型 4 点。残り全部を足しても 0.18 MB しかありません。<code>preload="metadata"</code> なので、開いた時点では音源の本体を落としません。構成図の PNG は 3 倍で撮っていたのを 2 倍にし、256 色に減らして 1.34 MB から 1.13 MB に落としました。元画像との画素のずれは平均 0.1／255 で、文字の明暗幅は変わっていません。</span></p>
     </div>
   </section>
 

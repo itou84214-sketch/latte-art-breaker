@@ -942,7 +942,12 @@ input[type="checkbox"] { accent-color: var(--accent); width: 15px; height: 15px;
    縦に積めば、文字の上をなぞればページが動き、カップの上をなぞれば崩れます。 */
 .hero__scroll { display: none; }
 
-@media (max-width: 820px) {
+/* 重ねるのは「横に長い画面」のときだけにします。
+   ここの条件は、JS が body.wide を付ける条件
+   （幅 900px 以上 かつ 横縦比 1.15 超）のちょうど裏返しです。
+   以前はここが「820px 以下」だったため、幅はあるけれど縦長の
+   PC 窓がどちらにも入らず、文字がカップに重なったままでした。 */
+@media (max-width: 899px), (max-aspect-ratio: 23 / 20) {
   .hero {
     min-height: 0;
     grid-template-rows: auto auto auto;
@@ -957,7 +962,8 @@ input[type="checkbox"] { accent-color: var(--accent); width: 15px; height: 15px;
     inset: auto;
     grid-row: 2;
     width: 100%;
-    max-width: 24rem;
+    /* 「カップの上をなぞる」まで画面に収まるよう、高さでも頭打ちにします */
+    max-width: min(30rem, 40vh);
     height: auto;
     aspect-ratio: 1 / 1;
     margin: 0 auto;
@@ -965,10 +971,15 @@ input[type="checkbox"] { accent-color: var(--accent); width: 15px; height: 15px;
   }
   .hero__copy { grid-row: 1; padding: 0; text-shadow: none; }
   .hero__how  { grid-row: 3; padding: 0; text-shadow: none; }
+  .hero__lead { margin-top: 0.9rem; }
+}
 
+/* 字を小さくするのと指の案内は、狭い画面だけです。
+   広い窓では見出しを小さくする理由がありません。 */
+@media (max-width: 820px) {
+  .hero > canvas { max-width: 24rem; }
   .hero__swirl { width: 76px; }
   .hero__title { font-size: clamp(1.9rem, 8.5vw, 2.6rem); }
-  .hero__lead  { margin-top: 0.9rem; }
 
   .hero__scroll {
     display: block;
@@ -1237,8 +1248,11 @@ input[type="checkbox"] { accent-color: var(--accent); width: 15px; height: 15px;
   .heart__mark { font-size: 1.15rem; }
   .desk--inline { margin-top: clamp(2.2rem, 7vh, 4rem); }
 }
-/* ===== 狭い画面での指の扱い ===== */
-@media (max-width: 820px) {
+/* ===== 縦に積んだときの指の扱い ===== */
+/* 条件は上の「縦に積む」と同じです。タブレットを縦に持ったときも
+   ここに入るので、820px では足りません。
+   マウスには touch-action は効かないので、PC の操作は変わりません。 */
+@media (max-width: 899px), (max-aspect-ratio: 23 / 20) {
   /* 上下になぞったらページを動かす。横や円ならカップが崩れる。 */
   canvas[data-cup] { touch-action: pan-y; }
 
