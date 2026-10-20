@@ -1337,12 +1337,15 @@ input[type="checkbox"] { accent-color: var(--accent); width: 15px; height: 15px;
 /* ===== 帯をつかんで払う ===== */
 /* 矢印ボタンはやめました。カップの上でも、押したまま動かせば机が動きます。
    押さずに乗せるだけなら今までどおり崩れます。 */
-.desk__band { cursor: grab; -webkit-user-select: none; user-select: none; }
-.desk__band[data-drag="1"] { cursor: grabbing; }
+/* つかめるのは段ごとです。1 段を払っても、ほかの段はついて来ません。 */
+.desk__band { -webkit-user-select: none; user-select: none; }
+.lane { cursor: grab; }
+.lane[data-drag="1"] { cursor: grabbing; }
 
-/* つかんでいるあいだはカップに指を渡しません。払いながら崩れないように。 */
-.desk__band[data-drag="1"] canvas[data-cup],
-.desk__band[data-drag="1"] .seat__foot { pointer-events: none; }
+/* つかんでいるあいだは、その段のカップに指を渡しません。
+   払いながら崩れないように。ほかの段のカップは触れたままです。 */
+.lane[data-drag="1"] canvas[data-cup],
+.lane[data-drag="1"] .seat__foot { pointer-events: none; }
 
 /* 段が増えると下の字が窮屈になるので、3 段のときだけ小さくします */
 .desk__band[data-lanes="3"] .seat__foot { gap: 0.45rem; }
@@ -1352,8 +1355,8 @@ input[type="checkbox"] { accent-color: var(--accent); width: 15px; height: 15px;
 .desk__band[data-lanes="3"] .seat__mine { font-size: 0.64rem; padding: 0.1rem 0.36rem; }
 .desk__band[data-lanes="3"] .seat__drop { font-size: 0.68rem; padding: 0.18rem 0.44rem; }
 
-/* キーボードで触れていることが分かるように */
-.desk__band:focus-visible {
+/* キーボードで触れていることが分かるように（焦点は段ごとに当たります） */
+.lane:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: -2px;
 }

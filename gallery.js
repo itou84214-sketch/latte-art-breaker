@@ -5,6 +5,8 @@
      区切りの無い 1 枚の机に、カップが無造作に置かれていて、ゆっくり
      流れていきます。カップの上をなぞると、その場で崩れます。
      みんなの作品ページは 3 段。2 段目だけ左から右へ流れます。
+     段はそれぞれ別の机として動きます。1 段をつかんで払っても、
+     ほかの段はそのまま流れ続けます。
 
    作りの都合
      ブラウザが同時に持てる WebGL は 16 個まで（実測）。17 個目を作ると
@@ -333,117 +335,146 @@
   // ---- 机を流す -----------------------------------------------------------
   var slow = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   var SPEED  = 26;        // ひとりでに流れる速さ（1 秒あたり px）
-  var glide  = 0;         // あと何 px 寄せるか（右へ送るなら ＋）
   var last = 0;
+  // 「つかむ」「勢い」「寄せる」は段ごとに持ちます（lanes の中）。
+  // 机ひとつぶんで持っていたころは、1 段を払うと 3 段ついて来ていました。
 
   function place(seat) {
     seat.el.style.transform = 'translateX(' + seat.x.toFixed(1) + 'px)';
   }
 
-  // dx だけ横へずらす。左右どちらにも回り込みます。
-  // auto が真のときは段ごとの向きを掛けます（2 段目だけ左から右へ）。
-  // 手で払うときは向きを掛けません。指について来ないと変なので。
-  function shift(dx, auto) {
-    for (var L = 0; L < lanes.length; L++) {
-      var lane = lanes[L];
-      var d = auto ? dx * lane.dir : dx;
-      if (!d) continue;
-      for (var i = 0; i < lane.seats.length; i++) {
-        var s = lane.seats[i];
-        s.x += d;
-        // 端から出たら、反対の端へ回して次の一杯を注ぐ
-        while (s.x + SLOT < -4) { s.x += lane.total; serve(s, pickPost()); }
-        while (s.x > lane.total - SLOT + 4) { s.x -= lane.total; serve(s, pickPost()); }
-        place(s);
-      }
+  // ひとつの段を dx だけ横へずらす。左右どちらにも回り込みます。
+  function move(lane, dx) {
+    if (!dx) return;
+    for (var i = 0; i < lane.seats.length; i++) {
+      var s = lane.seats[i];
+      s.x += dx;
+      // 端から出たら、反対の端へ回して次の一杯を注ぐ
+      while (s.x + SLOT < -4) { s.x += lane.total; serve(s, pickPost()); }
+      while (s.x > lane.total - SLOT + 4) { s.x -= lane.total; serve(s, pickPost()); }
+      place(s);
     }
   }
 
+  // 段ごとに勘定します。つかんでいる段だけが指に従い、ほかの段は
+  // そのまま流れ続けます（3 段がひとつにつながって動かないように）。
   function roll(now) {
     var dt = last ? Math.min((now - last) / 1000, 1 / 15) : 0;
     last = now;
 
-    // 手を置いていても止めません。崩しながらでも流れ続けます。
-    // つかんでいるあいだだけは、指の動きだけで動かします。
-    if (!still && !drag) shift(SPEED * dt, true);
-
-    var dx = 0;
-    if (fling && !drag) {
-      dx += fling * dt;
-      fling *= Math.pow(0.0022, dt);           // 1 秒でほぼ止まる
-      if (Math.abs(fling) < 8) fling = 0;
+    for (var L = 0; L < lanes.length; L++) {
+      var lane = lanes[L];
+      var dx = 0;
+      if (lane.drag === null) {
+        // ひとりでに流れるぶん。手を乗せていても止めません
+        // （乗せるだけなら崩れるので、止まると崩しづらくなります）。
+        if (!still) dx += SPEED * dt * lane.dir;
+        // 離したあとに残る勢い
+        if (lane.fling) {
+          dx += lane.fling * dt;
+          lane.fling *= Math.pow(0.0022, dt);     // 1 秒でほぼ止まる
+          if (Math.abs(lane.fling) < 8) lane.fling = 0;
+        }
+        // ホイールやキーで指定したぶんを、少しずつ食べてなめらかに
+        if (lane.glide) {
+          var g = lane.glide * Math.min(1, dt * 8);
+          lane.glide -= g;
+          if (Math.abs(lane.glide) < 0.5) { g += lane.glide; lane.glide = 0; }
+          dx += g;
+        }
+      }
+      move(lane, dx);
     }
-    if (glide && !drag) {
-      var g = glide * Math.min(1, dt * 8);        // 残りを少しずつ食べてなめらかに
-      glide -= g;
-      if (Math.abs(glide) < 0.5) { g += glide; glide = 0; }
-      dx += g;
-    }
-    if (dx) shift(dx, false);
     requestAnimationFrame(roll);
+  }
+
+  // 段ごとの左右キー。閉じ込みを作るので、段を作るときに渡します。
+  function keyLane(lane) {
+    return function (e) {
+      if (e.key === 'ArrowLeft')  { e.preventDefault(); lane.glide += SLOT; }
+      if (e.key === 'ArrowRight') { e.preventDefault(); lane.glide -= SLOT; }
+    };
   }
 
   // ---- 手で送る -----------------------------------------------------------
   //  つかんで払います。カップの上でも、押したまま動かせば机が動きます。
   //  押さずにカーソルを乗せるだけなら、今までどおり崩れます。
   //  押しているあいだはカップに指を渡さないので、払いながら崩れません。
-  var drag = null;
-  var fling = 0;          // 離したあとに残る勢い（px/秒）
+  //  動くのはつかんだ段だけです。指は何本でも、段ごとに別々に扱います。
   function nowMs() { return window.performance ? performance.now() : Date.now(); }
+
+  // 触られたところが、どの段か。段と段のすき間をつかんだときは、
+  // いちばん近い段にします（どこをつかんでも何かが動くように）。
+  function laneOf(node, y) {
+    while (node && node !== band) {
+      for (var i = 0; i < lanes.length; i++) if (lanes[i].el === node) return lanes[i];
+      node = node.parentNode;
+    }
+    var best = null, near = Infinity;
+    for (var k = 0; k < lanes.length; k++) {
+      var r = lanes[k].el.getBoundingClientRect();
+      var d = y < r.top ? r.top - y : (y > r.bottom ? y - r.bottom : 0);
+      if (d < near) { near = d; best = lanes[k]; }
+    }
+    return best;
+  }
+
+  var drags = {};         // 指ごとの、つかんでいる段
 
   band.addEventListener('pointerdown', function (e) {
     if (e.button) return;                      // 右クリックなどは拾わない
-    drag = { id: e.pointerId, last: e.clientX, t: nowMs(), v: 0 };
-    fling = 0;
-    glide = 0;
-    band.setAttribute('data-drag', '1');
+    var lane = laneOf(e.target, e.clientY);
+    if (!lane) return;
+    drags[e.pointerId] = { lane: lane, last: e.clientX, t: nowMs(), v: 0 };
+    lane.drag = e.pointerId;
+    lane.fling = 0;
+    lane.glide = 0;
+    lane.el.setAttribute('data-drag', '1');
     try { band.setPointerCapture(e.pointerId); } catch (err) {}
     e.preventDefault();
     e.stopPropagation();                       // カップに渡さない
   }, true);
 
   band.addEventListener('pointermove', function (e) {
-    if (!drag || e.pointerId !== drag.id) return;
-    var dx = e.clientX - drag.last;
-    drag.last = e.clientX;
+    var d = drags[e.pointerId];
+    if (!d) return;
+    var dx = e.clientX - d.last;
+    d.last = e.clientX;
     var t = nowMs();
-    var dt = Math.max(t - drag.t, 1) / 1000;
-    drag.t = t;
+    var dt = Math.max(t - d.t, 1) / 1000;
+    d.t = t;
     // 1 コマぶんの速さは跳ねやすいので、ならしてから勢いにします
-    drag.v = drag.v * 0.6 + (dx / dt) * 0.4;
-    if (dx) shift(dx, false);
+    d.v = d.v * 0.6 + (dx / dt) * 0.4;
+    move(d.lane, dx);
     e.preventDefault();
     e.stopPropagation();
   }, true);
 
   function endDrag(e) {
-    if (!drag || (e && e.pointerId !== drag.id)) return;
-    fling = Math.max(-2600, Math.min(2600, drag.v || 0));
-    drag = null;
-    band.removeAttribute('data-drag');
+    var d = e && drags[e.pointerId];
+    if (!d) return;
+    delete drags[e.pointerId];
+    // 同じ段をほかの指がまだつかんでいたら、その指に任せます
+    if (d.lane.drag !== e.pointerId) return;
+    d.lane.fling = Math.max(-2600, Math.min(2600, d.v || 0));
+    d.lane.drag = null;
+    d.lane.el.removeAttribute('data-drag');
   }
   ['pointerup', 'pointercancel'].forEach(function (t) {
     band.addEventListener(t, endDrag, true);
   });
 
-  // 横向きのホイール（Shift ＋ ホイールでも）。
+  // 横向きのホイール（Shift ＋ ホイールでも）。カーソルが乗っている段だけ。
   // 縦のホイールは取りません。取ると机の上でページを下に送れなくなります。
   band.addEventListener('wheel', function (e) {
     var dx = e.deltaX;
     if (!dx && e.shiftKey) dx = e.deltaY;
     if (!dx) return;
+    var lane = laneOf(e.target, e.clientY);
+    if (!lane) return;
     e.preventDefault();
-    glide -= dx;
+    lane.glide -= dx;
   }, { passive: false });
-
-  // キーボードでも送れるように。帯に焦点を当てて左右キー。
-  band.tabIndex = 0;
-  band.setAttribute('role', 'group');
-  band.setAttribute('aria-label', 'みんなのラテアート。左右キーで送れます');
-  band.addEventListener('keydown', function (e) {
-    if (e.key === 'ArrowLeft')  { e.preventDefault(); glide += SLOT; }
-    if (e.key === 'ArrowRight') { e.preventDefault(); glide -= SLOT; }
-  });
 
   // ---- 読み込み -----------------------------------------------------------
   function build() {
@@ -472,9 +503,17 @@
       // 2 段目だけ左から右へ流します
       var dir = (li === 1) ? 1 : -1;
       laneEl.setAttribute('data-dir', dir > 0 ? 'right' : 'left');
+      // キーボードでも送れるように。段ごとに焦点を当てて左右キー。
+      laneEl.tabIndex = 0;
+      laneEl.setAttribute('role', 'group');
+      laneEl.setAttribute('aria-label', L.lanes > 1
+        ? 'みんなのラテアート ' + (li + 1) + ' 段目。左右キーで送れます'
+        : 'みんなのラテアート。左右キーで送れます');
       band.appendChild(laneEl);
 
-      var lane = { el: laneEl, dir: dir, seats: [], total: 0 };
+      var lane = { el: laneEl, dir: dir, seats: [], total: 0,
+                   drag: null, fling: 0, glide: 0 };
+      laneEl.addEventListener('keydown', keyLane(lane));
       for (var i = 0; i < L.per; i++) {
         var s = makeSeat(made++, laneEl);
         if (!s) continue;
