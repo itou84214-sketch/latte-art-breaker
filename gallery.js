@@ -2,13 +2,15 @@
    みんなのラテアート — 机の上を流れていく席
    -------------------------------------------------------------------------
    見た目の狙い
-     区切りの無い 1 枚の机に、カップが無造作に置かれていて、右から左へ
-     ゆっくり流れていきます。カップの上をなぞると、その場で崩れます。
+     区切りの無い 1 枚の机に、カップが無造作に置かれていて、ゆっくり
+     流れていきます。カップの上をなぞると、その場で崩れます。
+     みんなの作品ページは 3 段。2 段目だけ左から右へ流れます。
 
    作りの都合
-     ブラウザが同時に持てる WebGL は 8〜16 個ほどしかありません。
-     そこで「席」の数を画面幅から決め打ちし、左端から出ていった席に
-     次の作品を注ぎ直して回します。作品が何百件になっても重くなりません。
+     ブラウザが同時に持てる WebGL は 16 個まで（実測）。17 個目を作ると
+     いちばん古いものが黙って壊されます。そこで使う数を決め打ちし、
+     端から出ていった席に次の作品を注ぎ直して回します。
+     作品が何百件に増えても重さは変わりません。
 
    いいねは、押したものを localStorage に覚えて二度押しを防いでいます。
    端末側の記録なので、消せばまた押せます。厳密な一人一票ではありません。
@@ -65,26 +67,41 @@
     save(MINE, load(MINE).filter(function (p) { return p.id !== id; }));
   }
 
-  // ---- 席の数と大きさ -----------------------------------------------------
-  // 幅の狭い端末では WebGL の数を減らします。
-  // トップページでは杯が 5 つ先にいるので、席はさらに少なくします
-  // （data-seats に上限を書いておきます）。
-  var CAP = parseInt(desk.dataset.seats || '0', 10) || 0;
+  // ---- 段と枠の数 ---------------------------------------------------------
+  //  ブラウザが同時に持てる WebGL は 16 個まで（このページで実測）。
+  //  17 個目を作ると、いちばん古いものが黙って壊されます。
+  //  余裕を見て、この机で使う数を決めます。
+  //   data-lanes  何段にするか（みんなの作品ページは 3、トップは 1）
+  //   data-seats  トップのように杯が先にいるページで、使う数を抑える
+  var CAP   = parseInt(desk.dataset.seats || '0', 10) || 0;
+  var LANES = Math.max(1, parseInt(desk.dataset.lanes || '1', 10) || 1);
 
   function layout() {
     var vw = Math.max(document.documentElement.clientWidth, 320);
+    var vh = Math.max(document.documentElement.clientHeight, 420);
     var narrow = vw < 700;
-    var base = narrow ? 200 : 272;   // 杯の幅の下限
-    var wide = narrow ? 240 : 360;   // 杯の幅の上限。これ以上は大きくしません
-    var most = narrow ? 4 : 9;       // WebGL の数の上限
-    // トップページでは杯が先に 5 つあるので、さらに減らします
-    if (CAP) most = Math.min(most, narrow ? Math.min(3, CAP) : CAP);
+    var base = narrow ? 200 : 272;   // 1 枠の幅の下限
+    var cap1 = narrow ? 240 : 360;   // 1 段のときの枠の幅の上限
+    var budget = narrow ? 9 : 12;    // この机で使う WebGL の数
+    if (CAP) budget = Math.min(budget, CAP);
 
-    // 「画面のぶん ＋ 袖 1 杯ぶん」並べます。袖が無いと、次の一杯が
-    // 画面の中で現れてしまいます。席を増やせないぶんは幅で稼ぎます。
-    var seats = Math.max(2, Math.min(most, Math.ceil(vw / base) + 1));
-    var seatW = Math.min(wide, Math.max(base, Math.ceil(vw / Math.max(seats - 1, 1)) + 1));
-    return { seatW: seatW, seats: seats };
+    var lanes = Math.max(1, Math.min(LANES, Math.floor(budget / 2)));
+    var per = Math.max(2, Math.floor(budget / lanes));
+
+    // 「見えるぶん ＋ 袖 1 枠ぶん」。袖が無いと、次の一杯が画面の中で現れます。
+    var slot = Math.max(base, Math.ceil(vw / (per - 1)) + 1);
+    if (lanes === 1) slot = Math.min(cap1, slot);
+
+    // 杯の大きさ。段を重ねるので、画面の高さからも頭打ちにします。
+    var cup;
+    if (lanes === 1) {
+      cup = slot - 20;
+    } else {
+      var room = (vh * 0.86 - (lanes - 1) * 14) / lanes;
+      cup = Math.min(slot - 24, Math.floor(room / 1.26) - 19);
+      cup = Math.max(120, Math.min(cup, 260));
+    }
+    return { lanes: lanes, per: per, slot: slot, cup: cup };
   }
 
   function when(ms) {
@@ -95,26 +112,59 @@
 
   // ---- 机をこしらえる -----------------------------------------------------
   var posts = [];
-  var seats = [];
-  var feed  = 0;          // 次に注ぐ作品の番号
-  var SEATW = 0;
-  var total = 0;
+  var seats = [];         // 全部の段の席をまとめたもの（ハートの塗り直しなどで使う）
+  var lanes = [];         // { el, dir, seats, total }
+  var SLOT = 0;
   var still = false;      // 動きを控える設定のときだけ、ひとりでには流さない
 
-  function nextPost() {
+  // 出す順番は「袋から引いて戻さない」方式です。
+  // ひと回りするあいだ、同じ作品は 1 回だけ出ます。袋が空いたら混ぜ直します。
+  // 引くときは、いま机に出ているものを避けます。
+  // 作品より席のほうが多いときは避けきれないので、そのときは袋の順に従います
+  // （同じ作品どうしが、いちばん離れた順番になります）。
+  var bag = [];
+  function refill() {
+    bag = posts.slice();
+    for (var i = bag.length - 1; i > 0; i--) {
+      var j = Math.floor(Math.random() * (i + 1));
+      var t = bag[i]; bag[i] = bag[j]; bag[j] = t;
+    }
+  }
+  function countOn(id) {
+    var n = 0;
+    for (var i = 0; i < seats.length; i++) {
+      if (seats[i].post && seats[i].post.id === id) n++;
+    }
+    return n;
+  }
+  var recent = [];        // 直前に出した作品（袋の継ぎ目で繰り返さないため）
+  function pickPost() {
     if (!posts.length) return null;
-    var p = posts[((feed % posts.length) + posts.length) % posts.length];
-    feed++;
+    if (!bag.length) refill();
+
+    // いま机に出ている数がいちばん少ないものを候補にします。
+    // 作品が席より多ければ、候補は「出ていないもの」になります。
+    var min = Infinity, i;
+    for (i = 0; i < bag.length; i++) min = Math.min(min, countOn(bag[i].id));
+    var cand = [];
+    for (i = 0; i < bag.length; i++) if (countOn(bag[i].id) === min) cand.push(i);
+
+    // 直前に出したものは、ほかに選べるなら避けます。
+    // 袋が空いて混ぜ直した直後、同じ作品が続けて出ることがあったためです。
+    var fresh = [];
+    for (i = 0; i < cand.length; i++) {
+      if (recent.indexOf(bag[cand[i]].id) < 0) fresh.push(cand[i]);
+    }
+    var pool = fresh.length ? fresh : cand;
+
+    // 袋はすでに混ぜてあるので、候補の先頭で足ります（順番はでたらめです）
+    var p = bag.splice(pool[0], 1)[0];
+    recent.push(p.id);
+    if (recent.length > 3) recent.shift();
     return p;
   }
-  // 手で右へ戻したときは、前に出ていた一杯を出し直します
-  function prevPost() {
-    if (!posts.length) return null;
-    feed--;
-    return posts[((feed % posts.length) + posts.length) % posts.length];
-  }
 
-  function makeSeat(i) {
+  function makeSeat(i, laneEl) {
     var el = document.createElement('div');
     el.className = 'seat';
     // 机に無造作に置かれた感じを出すための、席ごとのばらつき
@@ -143,7 +193,7 @@
         '<button type="button" class="seat__drop" hidden>取り消す</button>' +
       '</div>';
 
-    band.appendChild(el);
+    laneEl.appendChild(el);
 
     var seat = {
       el: el,
@@ -182,6 +232,10 @@
 
   function serve(seat, post) {
     seat.post = post;
+    // どの作品がどの席に出ているかを、札としても残しておきます
+    // （同じ作品が重なっていないかを、外から確かめられるように）
+    if (post) seat.el.setAttribute('data-post', post.id);
+    else seat.el.removeAttribute('data-post');
     // 席を使い回すので、絵が無いときも札とボタンを片づけます
     markMine(seat);
     if (!post) return;
@@ -260,6 +314,7 @@
         if (j.error) { msg.textContent = j.error; msg.hidden = false; return; }
         forgetPost(post.id);
         posts = posts.filter(function (p) { return p.id !== post.id; });
+        bag = bag.filter(function (p) { return p.id !== post.id; });
         seats.forEach(function (s) {
           if (s.post && s.post.id === post.id) { s.post = null; markMine(s); }
         });
@@ -286,15 +341,21 @@
   }
 
   // dx だけ横へずらす。左右どちらにも回り込みます。
-  function shift(dx) {
-    for (var i = 0; i < seats.length; i++) {
-      var s = seats[i];
-      s.x += dx;
-      // 左端から出たら、右の端へ回して次の一杯を注ぐ
-      while (s.x + SEATW < -4) { s.x += total; serve(s, nextPost()); }
-      // 右端から出たら、左の端へ回して前の一杯を注ぐ
-      while (s.x > total - SEATW + 4) { s.x -= total; serve(s, prevPost()); }
-      place(s);
+  // auto が真のときは段ごとの向きを掛けます（2 段目だけ左から右へ）。
+  // 手で払うときは向きを掛けません。指について来ないと変なので。
+  function shift(dx, auto) {
+    for (var L = 0; L < lanes.length; L++) {
+      var lane = lanes[L];
+      var d = auto ? dx * lane.dir : dx;
+      if (!d) continue;
+      for (var i = 0; i < lane.seats.length; i++) {
+        var s = lane.seats[i];
+        s.x += d;
+        // 端から出たら、反対の端へ回して次の一杯を注ぐ
+        while (s.x + SLOT < -4) { s.x += lane.total; serve(s, pickPost()); }
+        while (s.x > lane.total - SLOT + 4) { s.x -= lane.total; serve(s, pickPost()); }
+        place(s);
+      }
     }
   }
 
@@ -302,10 +363,11 @@
     var dt = last ? Math.min((now - last) / 1000, 1 / 15) : 0;
     last = now;
 
-    var dx = 0;
     // 手を置いていても止めません。崩しながらでも流れ続けます。
     // つかんでいるあいだだけは、指の動きだけで動かします。
-    if (!still && !drag) dx -= SPEED * dt;
+    if (!still && !drag) shift(SPEED * dt, true);
+
+    var dx = 0;
     if (fling && !drag) {
       dx += fling * dt;
       fling *= Math.pow(0.0022, dt);           // 1 秒でほぼ止まる
@@ -317,7 +379,7 @@
       if (Math.abs(glide) < 0.5) { g += glide; glide = 0; }
       dx += g;
     }
-    if (dx) shift(dx);
+    if (dx) shift(dx, false);
     requestAnimationFrame(roll);
   }
 
@@ -349,7 +411,7 @@
     drag.t = t;
     // 1 コマぶんの速さは跳ねやすいので、ならしてから勢いにします
     drag.v = drag.v * 0.6 + (dx / dt) * 0.4;
-    if (dx) shift(dx);
+    if (dx) shift(dx, false);
     e.preventDefault();
     e.stopPropagation();
   }, true);
@@ -379,40 +441,55 @@
   band.setAttribute('role', 'group');
   band.setAttribute('aria-label', 'みんなのラテアート。左右キーで送れます');
   band.addEventListener('keydown', function (e) {
-    if (e.key === 'ArrowLeft')  { e.preventDefault(); glide += SEATW; }
-    if (e.key === 'ArrowRight') { e.preventDefault(); glide -= SEATW; }
+    if (e.key === 'ArrowLeft')  { e.preventDefault(); glide += SLOT; }
+    if (e.key === 'ArrowRight') { e.preventDefault(); glide -= SLOT; }
   });
 
   // ---- 読み込み -----------------------------------------------------------
   function build() {
     var L = layout();
-    SEATW = L.seatW;
-    band.style.setProperty('--seatw', SEATW + 'px');
+    SLOT = L.slot;
+    band.style.setProperty('--seatw', SLOT + 'px');
+    band.style.setProperty('--cupw', L.cup + 'px');
+    band.setAttribute('data-lanes', String(L.lanes));
 
-    // 席は投稿の数では減らしません。投稿が少ないときは、同じ一杯が
-    // 何度も流れてきます。席を減らすと帯が画面より狭くなり、
-    // 机の右端が空いたままになってしまいます。
-    var n = L.seats;
-    total = n * SEATW;
-
-    // 帯は「見えるぶん ＋ 袖 1 杯ぶん」必要です。袖が取れないほど横長な
-    // 画面では、帯のほうを 1 杯ぶん狭めて中央に寄せます。止めてしまうと
+    // 段は「見えるぶん ＋ 袖 1 枠ぶん」必要です。袖が取れないほど横長な
+    // 画面では、段のほうを 1 枠ぶん狭めて中央に寄せます。止めてしまうと
     // 「流れていく机」でなくなるので、狭めてでも流します。
-    var fills = total - SEATW >= document.documentElement.clientWidth;
-    band.style.setProperty('--bandw', fills ? '100%' : (total - SEATW) + 'px');
+    var run = L.per * SLOT;
+    var fills = run - SLOT >= document.documentElement.clientWidth;
+    band.style.setProperty('--bandw', fills ? '100%' : (run - SLOT) + 'px');
     band.setAttribute('data-narrow', fills ? '0' : '1');
 
     // 動きを控える設定の人だけ、止めたままにします
     still = slow;
     band.setAttribute('data-still', still ? '1' : '0');
 
-    for (var i = 0; i < n; i++) {
-      var s = makeSeat(i);
-      if (!s) continue;
-      s.x = i * SEATW;
-      place(s);
-      seats.push(s);
-      serve(s, nextPost());
+    var made = 0;
+    for (var li = 0; li < L.lanes; li++) {
+      var laneEl = document.createElement('div');
+      laneEl.className = 'lane';
+      // 2 段目だけ左から右へ流します
+      var dir = (li === 1) ? 1 : -1;
+      laneEl.setAttribute('data-dir', dir > 0 ? 'right' : 'left');
+      band.appendChild(laneEl);
+
+      var lane = { el: laneEl, dir: dir, seats: [], total: 0 };
+      for (var i = 0; i < L.per; i++) {
+        var s = makeSeat(made++, laneEl);
+        if (!s) continue;
+        // 控えの 1 枠は、流れてくる側の外に置きます。
+        // 左へ流れる段は右端の外、右へ流れる段は左端の外。
+        // 右へ流れる段で右端に置くと、始まってすぐ回り込んでしまいます。
+        s.x = i * SLOT - (dir > 0 ? SLOT : 0);
+        place(s);
+        lane.seats.push(s);
+        seats.push(s);
+        serve(s, pickPost());
+      }
+      if (!lane.seats.length) { band.removeChild(laneEl); continue; }
+      lane.total = lane.seats.length * SLOT;
+      lanes.push(lane);
     }
 
     if (!seats.length) {

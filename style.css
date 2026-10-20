@@ -1121,17 +1121,24 @@ input[type="checkbox"] { accent-color: var(--accent); width: 15px; height: 15px;
 
 .desk__band {
   position: relative;
-  /* 席をいっぱいに広げても画面に届かないときだけ、帯を狭くして中央に寄せます
-     （--bandw は gallery.js が決めます）。杯はこの帯の中だけを動きます。 */
+  display: grid;
+  gap: 14px;
+  touch-action: pan-y;
+}
+
+/* 1 段ぶん。杯はこの中だけを動き、はみ出したぶんは切り落とします。
+   枠いっぱいに広げても画面に届かないときだけ、段を狭くして中央に寄せます
+   （--bandw と --cupw は gallery.js が決めます）。 */
+.lane {
+  position: relative;
   width: var(--bandw, 100%);
   margin-inline: auto;
   overflow: hidden;
-  height: calc(var(--seatw, 272px) * 1.26);
-  touch-action: pan-y;
+  height: calc((var(--cupw, 252px) + 19px) * 1.26);
 }
-/* 中央に寄せたときは、帯の両端でも杯がすっと消えるようにします */
-.desk__band[data-narrow="1"]::before,
-.desk__band[data-narrow="1"]::after {
+/* 中央に寄せたときは、段の両端でも杯がすっと消えるようにします */
+.desk__band[data-narrow="1"] .lane::before,
+.desk__band[data-narrow="1"] .lane::after {
   content: "";
   position: absolute;
   top: 0;
@@ -1140,11 +1147,11 @@ input[type="checkbox"] { accent-color: var(--accent); width: 15px; height: 15px;
   pointer-events: none;
   z-index: 2;
 }
-.desk__band[data-narrow="1"]::before {
+.desk__band[data-narrow="1"] .lane::before {
   left: 0;
   background: linear-gradient(90deg, #2a1d16, rgba(0, 0, 0, 0));
 }
-.desk__band[data-narrow="1"]::after {
+.desk__band[data-narrow="1"] .lane::after {
   right: 0;
   background: linear-gradient(270deg, #2a1d16, rgba(0, 0, 0, 0));
 }
@@ -1178,8 +1185,13 @@ input[type="checkbox"] { accent-color: var(--accent); width: 15px; height: 15px;
   will-change: transform;
 }
 .seat__cup {
-  width: 100%;
+  /* 枠の幅（--seatw）と杯の幅（--cupw）は別です。
+     段を重ねると、枠は広いまま杯だけ小さくなります。 */
+  width: var(--cupw, 100%);
+  max-width: 100%;
   margin-top: var(--lift, 0px);
+  margin-left: auto;
+  margin-right: auto;
   transform: rotate(var(--tilt, 0deg));
 }
 .seat__cup canvas {
@@ -1331,6 +1343,14 @@ input[type="checkbox"] { accent-color: var(--accent); width: 15px; height: 15px;
 /* つかんでいるあいだはカップに指を渡しません。払いながら崩れないように。 */
 .desk__band[data-drag="1"] canvas[data-cup],
 .desk__band[data-drag="1"] .seat__foot { pointer-events: none; }
+
+/* 段が増えると下の字が窮屈になるので、3 段のときだけ小さくします */
+.desk__band[data-lanes="3"] .seat__foot { gap: 0.45rem; }
+.desk__band[data-lanes="3"] .heart { font-size: 0.9rem; }
+.desk__band[data-lanes="3"] .heart__mark { font-size: 1rem; }
+.desk__band[data-lanes="3"] .seat__when { font-size: 0.72rem; }
+.desk__band[data-lanes="3"] .seat__mine { font-size: 0.64rem; padding: 0.1rem 0.36rem; }
+.desk__band[data-lanes="3"] .seat__drop { font-size: 0.68rem; padding: 0.18rem 0.44rem; }
 
 /* キーボードで触れていることが分かるように */
 .desk__band:focus-visible {

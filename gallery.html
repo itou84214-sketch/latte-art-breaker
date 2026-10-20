@@ -17,22 +17,23 @@
   <p class="galhead__eyebrow">EVERYONE'S LATTE ART</p>
   <h1 class="galhead__title">みんなのラテアート</h1>
   <p class="galhead__lead">
-    机の上を、みんなの一杯が流れていきます。<br>
+    机の上を、みんなの一杯が 3 段になって流れていきます。<br>
     <b>カップの上をなぞると崩れます。</b>気に入ったらハートを送ってください
   </p>
 </header>
 
 <!-- ============ 机 ============
      カップは区切りを持たず、机の上に無造作に並んでいます。
-     ブラウザが同時に持てる WebGL は 8〜16 個ほどなので、
-     席の数は決め打ちにし、流れて左端から出た席に次の作品を注ぎ直します。 -->
-<main class="desk" data-desk>
+     3 段のコンベアで、真ん中の段だけ逆向き（左から右）に流れます。
+     ブラウザが同時に持てる WebGL は 16 個までなので（実測）、
+     使う数を決め打ちにし、端から出た席に次の作品を注ぎ直します。 -->
+<main class="desk" data-desk data-lanes="3">
   <div class="desk__band" data-band aria-live="polite"></div>
   <p class="desk__msg" data-msg>机を用意しています…</p>
 </main>
 
 <p class="desk__hint" data-hint hidden>
-  なぞると崩れます。手を置いているあいだ、机は止まります
+  なぞると崩れます。つかんで横へ払うと、見たい一杯まで送れます
 </p>
 
 <div class="bar" role="group" aria-label="すべての杯に効く設定">
