@@ -511,22 +511,82 @@
   }
 
   var drags = {};         // 指ごとの、つかんでいる段
+  var pend  = {};         // 行き先がまだ決まっていない指
+
+  //  マウスには「乗せるだけ」があるので、押していなければ崩す、
+  //  押して動かせば机を送る、で分けられます。
+  //  指にはそれがありません。押した瞬間には、崩したいのか送りたいのか
+  //  分からないので、押しはじめの動きで決めます。
+  //    すぐ横へすべった   → 机を送る
+  //    しばらく置いたまま → 杯に渡して、指で崩してもらう
+  //    動かさずに離した   → 軽くかき混ぜる（スプーンと同じ）
+  //  杯の touch-action は pan-y で、縦はブラウザが頁送りに使います。
+  //  だから崩す動きも払う動きも横向きになり、向きだけでは分けられません。
+  //  決まるまでは杯にも指を渡しません。渡すと、払いはじめに絵が崩れます。
+  var HOLD = 220;         // これだけ置いたままなら「崩す」（ミリ秒）
+  var SLIP = 8;           // これだけ横へすべったら「送る」（px）
+
+  function grab(lane, id, clientX) {
+    drags[id] = { lane: lane, last: clientX, t: nowMs(), v: 0 };
+    lane.drag = id;
+    lane.fling = 0;
+    lane.glide = 0;
+    lane.el.setAttribute('data-drag', '1');
+    try { band.setPointerCapture(id); } catch (err) {}
+  }
+
+  function cupAt(node) {
+    while (node && node !== band) {
+      if (node.classList && node.classList.contains('seat')) {
+        for (var L = 0; L < lanes.length; L++) {
+          for (var i = 0; i < lanes[L].seats.length; i++) {
+            if (lanes[L].seats[i].el === node) return lanes[L].seats[i].cup;
+          }
+        }
+        return null;
+      }
+      node = node.parentNode;
+    }
+    return null;
+  }
 
   band.addEventListener('pointerdown', function (e) {
     if (e.button) return;                      // 右クリックなどは拾わない
     var lane = laneOf(e.target, e.clientY);
     if (!lane) return;
-    drags[e.pointerId] = { lane: lane, last: e.clientX, t: nowMs(), v: 0 };
-    lane.drag = e.pointerId;
-    lane.fling = 0;
-    lane.glide = 0;
-    lane.el.setAttribute('data-drag', '1');
-    try { band.setPointerCapture(e.pointerId); } catch (err) {}
+    var finger = e.pointerType === 'touch' || e.pointerType === 'pen';
+    var onCup = !!(e.target && e.target.closest && e.target.closest('canvas[data-cup]'));
+    if (finger && onCup) {
+      // まだ決めません。押しただけでは崩れないので、杯にはそのまま渡します。
+      pend[e.pointerId] = { lane: lane, x0: e.clientX, y0: e.clientY,
+                            t0: nowMs(), cup: cupAt(e.target) };
+      return;
+    }
+    grab(lane, e.pointerId, e.clientX);
     e.preventDefault();
     e.stopPropagation();                       // カップに渡さない
   }, true);
 
   band.addEventListener('pointermove', function (e) {
+    var p = pend[e.pointerId];
+    if (p) {
+      var ax = Math.abs(e.clientX - p.x0), ay = Math.abs(e.clientY - p.y0);
+      var waited = nowMs() - p.t0;
+      if (waited < HOLD && ax >= SLIP && ax >= ay) {
+        // 横へすべった。机を送ります（押した所から数え直します）
+        delete pend[e.pointerId];
+        grab(p.lane, e.pointerId, p.x0);
+        // この下の、いつもの払う処理へ続きます
+      } else if (waited >= HOLD) {
+        // 置いたまま待った。この指は杯のものです
+        delete pend[e.pointerId];
+        return;
+      } else {
+        e.preventDefault();
+        e.stopPropagation();                   // まだ決まっていない
+        return;
+      }
+    }
     var d = drags[e.pointerId];
     if (!d) return;
     var dx = e.clientX - d.last;
@@ -542,6 +602,17 @@
   }, true);
 
   function endDrag(e) {
+    var p = e && pend[e.pointerId];
+    if (p) {
+      delete pend[e.pointerId];
+      // 動かさずに離した＝軽くひと混ぜ。指には「乗せるだけ」が無いので、
+      // これが「触って崩す」のいちばん短い言い方になります。
+      if (e.type === 'pointerup' && p.cup &&
+          Math.abs(e.clientX - p.x0) < SLIP && Math.abs(e.clientY - p.y0) < SLIP) {
+        p.cup.spoon();
+      }
+      return;
+    }
     var d = e && drags[e.pointerId];
     if (!d) return;
     delete drags[e.pointerId];

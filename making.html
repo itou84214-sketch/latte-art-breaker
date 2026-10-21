@@ -214,7 +214,7 @@ footer a { color: var(--accent); }
     </p>
     <ul class="meta">
       <li>リージョン <b>ap-northeast-1</b></li>
-      <li>公開ファイル <b>16 点 / 約 8.7 MB</b></li>
+      <li>公開ファイル <b>16 点 / 約 8.8 MB</b></li>
       <li>ビルド工程 <b>なし</b></li>
       <li>HTTP 実測 <b>2026-10-20</b></li>
     </ul>
@@ -436,16 +436,16 @@ footer a { color: var(--accent); }
           <tr><th scope="row"><code>gallery.html</code></th><td><code>text/html; charset=utf-8</code></td><td><code>no-cache</code></td><td class="num">2,783 B</td><td class="ok">200</td></tr>
           <tr><th scope="row"><code>style.css</code></th><td><code>text/css; charset=utf-8</code></td><td><code>no-cache</code></td><td class="num">43,319 B</td><td class="ok">200</td></tr>
           <tr><th scope="row"><code>latte.js</code></th><td><code>text/javascript; charset=utf-8</code></td><td><code>no-cache</code></td><td class="num">81,178 B</td><td class="ok">200</td></tr>
-          <tr><th scope="row"><code>gallery.js</code></th><td><code>text/javascript; charset=utf-8</code></td><td><code>no-cache</code></td><td class="num">29,493 B</td><td class="ok">200</td></tr>
+          <tr><th scope="row"><code>gallery.js</code></th><td><code>text/javascript; charset=utf-8</code></td><td><code>no-cache</code></td><td class="num">32,737 B</td><td class="ok">200</td></tr>
           <tr><th scope="row"><code>config.js</code></th><td><code>text/javascript; charset=utf-8</code></td><td><code>no-cache</code></td><td class="num">594 B</td><td class="ok">200</td></tr>
           <tr><th scope="row"><code>bgm.mp3</code></th><td><code>audio/mpeg</code></td><td><code>public, max-age=86400</code></td><td class="num">6,203,098 B</td><td class="ok">200</td></tr>
           <tr><th scope="row"><code>check.html</code></th><td><code>text/html; charset=utf-8</code></td><td><code>no-cache</code></td><td class="num">4,277 B</td><td class="ok">200</td></tr>
           <tr><th scope="row"><code>art/</code> の 6 点</th><td><code>image/png</code></td><td><code>no-cache</code></td><td class="num">564,003 B</td><td class="ok">200</td></tr>
-          <tr><th scope="row"><code>making.html</code></th><td><code>text/html; charset=utf-8</code></td><td><code>no-cache</code></td><td class="num">58,279 B</td><td style="color:var(--muted)">この頁</td></tr>
-          <tr><th scope="row">合計</th><td colspan="2" style="color:var(--muted)">圧縮なしで、保存したまま返します</td><td class="num"><b>7,000,765 B</b></td><td style="color:var(--muted)">10 行</td></tr>
+          <tr><th scope="row"><code>making.html</code></th><td><code>text/html; charset=utf-8</code></td><td><code>no-cache</code></td><td class="num">59,907 B</td><td style="color:var(--muted)">この頁</td></tr>
+          <tr><th scope="row">合計</th><td colspan="2" style="color:var(--muted)">圧縮なしで、保存したまま返します</td><td class="num"><b>7,005,637 B</b></td><td style="color:var(--muted)">10 行</td></tr>
         </tbody>
       </table>
-      <p style="margin:.7rem 0 0;font-size:.82rem;color:var(--muted)">このページを 1 枚にした <code>architecture.png</code>（2240×17910、約 2.06 MB）も同じ場所に置いてあります。これは<b>この表を含む画像</b>なので、正確なバイト数を表に書くと数字が決まりません（書き換えるたび PNG の圧縮結果が変わり、その結果がまた画像に写る）。ここだけ概数にしてあります。この表の合計にも、この画像は入れていません。</p>
+      <p style="margin:.7rem 0 0;font-size:.82rem;color:var(--muted)">このページを 1 枚にした <code>architecture.png</code>（2240×18742、約 2.15 MB）も同じ場所に置いてあります。これは<b>この表を含む画像</b>なので、正確なバイト数を表に書くと数字が決まりません（書き換えるたび PNG の圧縮結果が変わり、その結果がまた画像に写る）。ここだけ概数にしてあります。この表の合計にも、この画像は入れていません。</p>
     </div>
   </section>
 
@@ -633,6 +633,22 @@ footer a { color: var(--accent); }
         杯が 338px あるトップの帯で<b>1.1px だけ切れていました</b>。
         逃げを <code>杯 × 0.0183 ＋ 2</code> にして、どの大きさでも切れないように
         しました（杯 190px で 6px、338px で 9px）。</span></p>
+      <p class="note"><b>スマホでは一度も崩せていなかった</b><span>マウスは
+        「乗せるだけ＝崩す」「押して動かす＝机を送る」で分けていました。
+        指にはその「乗せるだけ」がありません。押した瞬間をぜんぶ机送りに
+        使っていたので、<b>指では一度も杯に届いていませんでした</b>
+        （実測：指でぐるぐるなぞっても崩れ 0.00。払うと段は 314px 動く）。
+        縦の動きで分けることはできません。杯の <code>touch-action</code> は
+        <code>pan-y</code> で、縦はブラウザが頁送りに使うためです（実測）。
+        崩す動きも払う動きも横向きになります。
+        そこで<b>押しはじめの「間」</b>で分けました。すぐ横へ 8px すべったら机を送り、
+        220ms 置いたままなら杯に渡します。動かさずに離したら、ひと混ぜします。
+        決まるまでは杯にも指を渡しません。渡すと払いはじめに絵が崩れるためです。
+        実測で、押して 0.26 秒おいてからなぞると崩れ 30.80、すぐ払うと机が 330px
+        動いて<b>杯に届いた指の動きは 0 回</b>、叩くと崩れ 10.59 になりました。
+        なお途中、払ったのに崩れ 29.51 と出て悩みましたが、
+        これは<b>330px 動いたせいで席の作品が入れ替わり、別の絵と比べていた</b>
+        ためでした。席の <code>data-post</code> を見比べて切り分けています。</span></p>
       <p class="note"><b>3 段がひとつにつながって動いていた</b><span>1 段をつかんで払うと、
         3 段とも同じだけ動いていました。「つかむ」「離したあとの勢い」「送るぶん」を
         <b>机ひとつぶんの変数で持っていた</b>ためです。段ごとに持たせ、
@@ -726,7 +742,7 @@ footer a { color: var(--accent); }
       <p class="note"><b>投稿の受け口は絞ってある</b><span>Lambda に持たせた役割が触れるのは、投稿を入れる 1 テーブルだけ。他の AWS の資源には手が届きません。同時に動く本数も 5 までにしてあるので、呼ばれ続けても請求は頭打ちになります。</span></p>
       <p class="note"><b>ブラウザ側の必要条件</b><span>WebGL2 と <code>EXT_color_buffer_float</code>。無い環境では、カップの代わりに理由を書いた文が出ます。</span></p>
       <p class="note"><b>更新は数行</b><span><code>aws s3 cp</code> を並べるだけ。<code>index.html</code> は <code>no-cache</code> なので、置いた瞬間から反映されます。</span></p>
-      <p class="note"><b>重いのは音源</b><span>約 8.7 MB のうち 5.92 MB が <code>bgm.mp3</code>、2.06 MB が構成図の PNG、0.54 MB が手描きの型 4 点。残り全部を足しても 0.22 MB しかありません。<code>preload="metadata"</code> なので、開いた時点では音源の本体を落としません。構成図の PNG は 3 倍で撮っていたのを 2 倍にし、256 色に減らして 1.34 MB から 2.06 MB に落としました。元画像との画素のずれは平均 0.1／255 で、文字の明暗幅は変わっていません。</span></p>
+      <p class="note"><b>重いのは音源</b><span>約 8.8 MB のうち 5.92 MB が <code>bgm.mp3</code>、2.15 MB が構成図の PNG、0.54 MB が手描きの型 4 点。残り全部を足しても 0.23 MB しかありません。<code>preload="metadata"</code> なので、開いた時点では音源の本体を落としません。構成図の PNG は 3 倍で撮っていたのを 2 倍にし、256 色に減らして 1.34 MB から 2.15 MB に落としました。元画像との画素のずれは平均 0.1／255 で、文字の明暗幅は変わっていません。</span></p>
     </div>
   </section>
 
