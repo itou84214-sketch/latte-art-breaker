@@ -434,18 +434,18 @@ footer a { color: var(--accent); }
         <tbody>
           <tr><th scope="row"><code>index.html</code></th><td><code>text/html; charset=utf-8</code></td><td><code>no-cache</code></td><td class="num">13,741 B</td><td class="ok">200</td></tr>
           <tr><th scope="row"><code>gallery.html</code></th><td><code>text/html; charset=utf-8</code></td><td><code>no-cache</code></td><td class="num">2,783 B</td><td class="ok">200</td></tr>
-          <tr><th scope="row"><code>style.css</code></th><td><code>text/css; charset=utf-8</code></td><td><code>no-cache</code></td><td class="num">42,339 B</td><td class="ok">200</td></tr>
-          <tr><th scope="row"><code>latte.js</code></th><td><code>text/javascript; charset=utf-8</code></td><td><code>no-cache</code></td><td class="num">80,257 B</td><td class="ok">200</td></tr>
+          <tr><th scope="row"><code>style.css</code></th><td><code>text/css; charset=utf-8</code></td><td><code>no-cache</code></td><td class="num">43,319 B</td><td class="ok">200</td></tr>
+          <tr><th scope="row"><code>latte.js</code></th><td><code>text/javascript; charset=utf-8</code></td><td><code>no-cache</code></td><td class="num">81,178 B</td><td class="ok">200</td></tr>
           <tr><th scope="row"><code>gallery.js</code></th><td><code>text/javascript; charset=utf-8</code></td><td><code>no-cache</code></td><td class="num">29,493 B</td><td class="ok">200</td></tr>
           <tr><th scope="row"><code>config.js</code></th><td><code>text/javascript; charset=utf-8</code></td><td><code>no-cache</code></td><td class="num">594 B</td><td class="ok">200</td></tr>
           <tr><th scope="row"><code>bgm.mp3</code></th><td><code>audio/mpeg</code></td><td><code>public, max-age=86400</code></td><td class="num">6,203,098 B</td><td class="ok">200</td></tr>
           <tr><th scope="row"><code>check.html</code></th><td><code>text/html; charset=utf-8</code></td><td><code>no-cache</code></td><td class="num">4,277 B</td><td class="ok">200</td></tr>
           <tr><th scope="row"><code>art/</code> の 6 点</th><td><code>image/png</code></td><td><code>no-cache</code></td><td class="num">564,003 B</td><td class="ok">200</td></tr>
-          <tr><th scope="row"><code>making.html</code></th><td><code>text/html; charset=utf-8</code></td><td><code>no-cache</code></td><td class="num">56,843 B</td><td style="color:var(--muted)">この頁</td></tr>
-          <tr><th scope="row">合計</th><td colspan="2" style="color:var(--muted)">圧縮なしで、保存したまま返します</td><td class="num"><b>6,997,428 B</b></td><td style="color:var(--muted)">10 行</td></tr>
+          <tr><th scope="row"><code>making.html</code></th><td><code>text/html; charset=utf-8</code></td><td><code>no-cache</code></td><td class="num">58,279 B</td><td style="color:var(--muted)">この頁</td></tr>
+          <tr><th scope="row">合計</th><td colspan="2" style="color:var(--muted)">圧縮なしで、保存したまま返します</td><td class="num"><b>7,000,765 B</b></td><td style="color:var(--muted)">10 行</td></tr>
         </tbody>
       </table>
-      <p style="margin:.7rem 0 0;font-size:.82rem;color:var(--muted)">このページを 1 枚にした <code>architecture.png</code>（2240×17437、約 1.99 MB）も同じ場所に置いてあります。これは<b>この表を含む画像</b>なので、正確なバイト数を表に書くと数字が決まりません（書き換えるたび PNG の圧縮結果が変わり、その結果がまた画像に写る）。ここだけ概数にしてあります。この表の合計にも、この画像は入れていません。</p>
+      <p style="margin:.7rem 0 0;font-size:.82rem;color:var(--muted)">このページを 1 枚にした <code>architecture.png</code>（2240×17910、約 2.06 MB）も同じ場所に置いてあります。これは<b>この表を含む画像</b>なので、正確なバイト数を表に書くと数字が決まりません（書き換えるたび PNG の圧縮結果が変わり、その結果がまた画像に写る）。ここだけ概数にしてあります。この表の合計にも、この画像は入れていません。</p>
     </div>
   </section>
 
@@ -681,6 +681,21 @@ footer a { color: var(--accent); }
         確かめられていません</b>（確認に使っている headless では読み込み直しに
         なりました）。筋道のほうは上の実測で確かめ、戻る筋だけを人工的に
         起こして、読み込み直しが走ることも確かめています。</span></p>
+      <p class="note"><b>文脈を失った canvas は、真っ白に描かれる</b><span>「一瞬だけ白いまま
+        放置されるのが見える」と言われて、画面を撮って画素の値を読みました。
+        わざと文脈を失わせた杯は、canvas いっぱいが <code>255,255,255</code> でした
+        （無事な杯の角は <code>25,18,14</code>）。黒でも透明でもなく、真っ白です。
+        下に敷いた色は見えません。canvas が自分で白を塗るからです。
+        そこで <code>canvas</code> ごと隠します。場所は空けたままにしたいので、
+        <code>display</code> ではなく <code>visibility</code> を使います。
+        机の席は、暗い穴が空くより並びが崩れないように、
+        <b>何も描いていない杯の絵</b>（空いた席に使っているものと同じ）に
+        差し替えます。読み込み直しが終わるまでのあいだも白くしないよう、
+        <code>pageshow</code> で読み込み直す前に先に白を消しています。
+        机の杯すべての文脈を失わせて撮り直したところ、
+        <b>まっ白な画素は 0.00%</b> になりました。
+        <code>html</code> にも背景色を置きました。読み込み直しの最初のひと息は
+        <code>body</code> の色がまだ届かないためです。</span></p>
       <p class="note"><b>動きの無い杯も毎コマ描いていた</b><span>絵そのものは止まって
         いるのに、湯気と粒子のためだけに杯の数ぶん毎コマ描き直していました。
         動きの無い杯は 1 秒 20 回までに間引いています。
@@ -711,7 +726,7 @@ footer a { color: var(--accent); }
       <p class="note"><b>投稿の受け口は絞ってある</b><span>Lambda に持たせた役割が触れるのは、投稿を入れる 1 テーブルだけ。他の AWS の資源には手が届きません。同時に動く本数も 5 までにしてあるので、呼ばれ続けても請求は頭打ちになります。</span></p>
       <p class="note"><b>ブラウザ側の必要条件</b><span>WebGL2 と <code>EXT_color_buffer_float</code>。無い環境では、カップの代わりに理由を書いた文が出ます。</span></p>
       <p class="note"><b>更新は数行</b><span><code>aws s3 cp</code> を並べるだけ。<code>index.html</code> は <code>no-cache</code> なので、置いた瞬間から反映されます。</span></p>
-      <p class="note"><b>重いのは音源</b><span>約 8.7 MB のうち 5.92 MB が <code>bgm.mp3</code>、1.99 MB が構成図の PNG、0.54 MB が手描きの型 4 点。残り全部を足しても 0.22 MB しかありません。<code>preload="metadata"</code> なので、開いた時点では音源の本体を落としません。構成図の PNG は 3 倍で撮っていたのを 2 倍にし、256 色に減らして 1.34 MB から 1.99 MB に落としました。元画像との画素のずれは平均 0.1／255 で、文字の明暗幅は変わっていません。</span></p>
+      <p class="note"><b>重いのは音源</b><span>約 8.7 MB のうち 5.92 MB が <code>bgm.mp3</code>、2.06 MB が構成図の PNG、0.54 MB が手描きの型 4 点。残り全部を足しても 0.22 MB しかありません。<code>preload="metadata"</code> なので、開いた時点では音源の本体を落としません。構成図の PNG は 3 倍で撮っていたのを 2 倍にし、256 色に減らして 1.34 MB から 2.06 MB に落としました。元画像との画素のずれは平均 0.1／255 で、文字の明暗幅は変わっていません。</span></p>
     </div>
   </section>
 

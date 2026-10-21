@@ -28,7 +28,10 @@
 
 * { box-sizing: border-box; }
 
-html { scroll-behavior: smooth; }
+/* 読み込み直しのあいだ、まっさらな白を見せないように。
+   body の色は html にも伝わりますが、読み込みの最初のひと息だけは
+   まだ届かないので、html にも置いておきます。 */
+html { scroll-behavior: smooth; background: #0d0907; }
 
 body {
   margin: 0;
@@ -1224,6 +1227,21 @@ input[type="checkbox"] { accent-color: var(--accent); width: 15px; height: 15px;
   margin-right: auto;
   transform: rotate(var(--tilt, 0deg));
 }
+/* WebGL の文脈を失った canvas は、Chrome では<真っ白>に描かれます
+   （実測で 255,255,255。無事な杯の角は 25,18,14）。
+   机に白い四角が残ると目立つので、canvas ごと隠して下の色に沈めます。
+   場所は空けたままにしたいので display ではなく visibility を使います。 */
+canvas[data-cup].gl-lost { visibility: hidden; }
+
+/* 机の席は、何も描いていない杯の絵に差し替えます（gallery.js と同じ絵）。
+   暗い穴が空くより、並びが崩れません。 */
+.seat__cup--lost {
+  background-color: #18110e;
+  background-size: 100% 100%;
+  background-repeat: no-repeat;
+  background-position: center;
+}
+
 .seat__cup canvas,
 .seat__cup img {
   display: block;

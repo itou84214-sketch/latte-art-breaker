@@ -1205,29 +1205,49 @@
   //  あります。しまわれているあいだに奪われていると、戻ったときに杯が
   //  白いままになります。奪われた文脈は同じ canvas では作り直せないので、
   //  黙って白いままにせず、理由を出すか、頁ごと読み込み直します。
+  //  文脈を失った canvas は、Chrome では<真っ白>に描かれます（実測で
+  //  255,255,255。無事な杯の角は 25,18,14）。白い四角が机に残ると目立つので、
+  //  canvas そのものを隠して、机の色に沈めます。
+  //  机の席は、何も描いていない杯の絵に差し替えます。
+  function markLost(cup) {
+    cup.state.lost = true;
+    var cv = cup.canvas;
+    cv.classList.add('gl-lost');
+    var box = cv.parentNode;
+    if (box && box.classList && box.classList.contains('seat__cup')) {
+      box.style.backgroundImage =
+        'url("art/cup-blank' + (cv.dataset.zoom ? '-near' : '') + '.png")';
+      box.classList.add('seat__cup--lost');
+      return;
+    }
+    var note = box && box.querySelector && box.querySelector('.gl-note');
+    if (note) {
+      note.textContent = 'この杯は、ブラウザが WebGL を手放したため消えました。'
+                       + 'ページを読み込み直すと戻ります。';
+      note.hidden = false;
+    }
+  }
+
   function watchLoss(cup) {
     cup.canvas.addEventListener('webglcontextlost', function (e) {
       // これを呼ばないと、ブラウザは二度とこの canvas に文脈をくれません
       e.preventDefault();
-      cup.state.lost = true;
-      var note = cup.canvas.parentNode &&
-                 cup.canvas.parentNode.querySelector('.gl-note');
-      if (note) {
-        note.textContent = 'この杯は、ブラウザが WebGL を手放したため消えました。'
-                         + 'ページを読み込み直すと戻ります。';
-        note.hidden = false;
-      }
+      markLost(cup);
     });
   }
 
-  function anyLost() {
+  // 失っている杯をぜんぶ数えて、ついでに白い四角を消します。
+  // 読み込み直しが終わるまでのあいだ、白いままにしないためです。
+  function hideLost() {
+    var n = 0;
     for (var i = 0; i < cups.length; i++) {
-      if (cups[i].state.lost) return true;
       var g2 = null;
       try { g2 = cups[i].canvas.getContext('webgl2'); } catch (err) {}
-      if (!g2 || g2.isContextLost()) return true;
+      if (!cups[i].state.lost && g2 && !g2.isContextLost()) continue;
+      if (!cups[i].state.lost) markLost(cups[i]);
+      n++;
     }
-    return false;
+    return n;
   }
 
   // しまっておいた頁が戻ってきたとき（戻るボタン）。
@@ -1236,7 +1256,7 @@
   //（読み込み直しが繰り返されることはありません）。
   window.addEventListener('pageshow', function (e) {
     if (!e.persisted) return;
-    if (anyLost()) location.reload();
+    if (hideLost()) location.reload();
   });
 
   // あとから足した canvas も杯にできます（みんなのラテアートの席がこれを使います）
