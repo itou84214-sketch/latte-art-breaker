@@ -1140,7 +1140,9 @@ input[type="checkbox"] { accent-color: var(--accent); width: 15px; height: 15px;
 /* 2 段以上あるときは、段を「別の板」として立てます。
    背景がつながっていると、どこからどこまでが 1 段か分かりません。 */
 .desk[data-trays="1"] .lane {
-  border-radius: 16px;
+  /* 板は画面いっぱいなので、上下の境目だけが見えます。
+     左右は画面の外へ続くので、角は丸めません。 */
+  border-radius: 0;
   /* 板ごとの木目。机の木目とは向きと細さを変えて、別の板に見せます */
   background:
     repeating-linear-gradient(90deg,
@@ -1221,7 +1223,8 @@ input[type="checkbox"] { accent-color: var(--accent); width: 15px; height: 15px;
   margin-right: auto;
   transform: rotate(var(--tilt, 0deg));
 }
-.seat__cup canvas {
+.seat__cup canvas,
+.seat__cup img {
   display: block;
   width: 100%;
   aspect-ratio: 1 / 1;
@@ -1230,6 +1233,13 @@ input[type="checkbox"] { accent-color: var(--accent); width: 15px; height: 15px;
   /* 机に落ちる影 */
   filter: drop-shadow(0 10px 14px rgba(0, 0, 0, 0.5));
 }
+
+/* 空きの席。何も描いていない杯の絵です。
+   WebGL は 16 個までで画面を埋める数の杯は作れないので、
+   作品が増えるまでのあいだ、空いた所をこれで埋めています。
+   絵は本物のシェーダで撮ったものなので、作品の席と同じ見た目です。 */
+.seat--blank .seat__cup img { pointer-events: none; }
+.seat--blank .seat__foot { min-height: 0; }
 .seat__cup canvas.stirring { cursor: grabbing; }
 
 .seat__foot {

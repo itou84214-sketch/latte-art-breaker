@@ -14,6 +14,13 @@
      端から出ていった席に次の作品を注ぎ直して回します。
      作品が何百件に増えても重さは変わりません。
 
+     席は 2 種類あります。
+       作品の席 … WebGL の杯。絵を映し、なぞると崩れます
+       空きの席 … 何も描いていない杯の絵（art/cup-blank.png）。
+                  本物のシェーダで撮った静止画です。
+     画面を埋めるには 1440px で 24 席ほど要りますが、WebGL は 15 個までです。
+     足りないぶんを空きの席で埋め、作品が増えるのを待ちます。
+
    いいねは、押したものを localStorage に覚えて二度押しを防いでいます。
    端末側の記録なので、消せばまた押せます。厳密な一人一票ではありません。
    ========================================================================= */
@@ -108,6 +115,7 @@
       var run = budget * s1;
       var fills = run - s1 >= vw;
       return { lanes: 1, cup: [s1 - 20], slot: [s1], seats: [budget],
+               live: [Math.min(budget, posts.length)], zoom: [0],
                width: [fills ? 0 : run - s1], laneh: [laneH(s1 - 20)], trays: false };
     }
 
@@ -120,33 +128,44 @@
     var c = Math.floor((room - lanes * (8 + FOOT)) / sum);
     c = Math.max(110, Math.min(c, 260));
 
-    var cup = [], slot = [];
+    // 席は「見えるぶん ＋ 袖 1 枠」。袖が無いと、次の一杯が画面の中で現れます。
+    // 板は画面いっぱいに置きます（短くすると机が切れて見えるため）。
+    var cup = [], slot = [], seats = [], laneh = [], zoom = [], width = [];
     for (i = 0; i < lanes; i++) {
-      cup[i]  = Math.round(c * SCALE[i]);
-      slot[i] = cup[i] + PAD;
-    }
-
-    // 段の長さは「席が埋めきれるところまで」にします。
-    // 席の数は WebGL の持ち分で決まるので、長さもそれで決まります。
-    // 画面幅まで届かないぶんは、段を短くして中央に寄せます
-    // （段を広げて席を散らすと、杯のあいだが空いて見えます。
-    //   以前は 1 枠 476px に杯 189px で、6 割が空きでした）。
-    var W = 0;
-    for (var w = Math.min(vw, 2400); w >= 200; w -= 2) {
-      var tot = 0;
-      for (i = 0; i < lanes; i++) tot += Math.ceil(w / slot[i]) + 1;
-      if (tot <= budget) { W = w; break; }
-    }
-    if (!W) W = 200;
-
-    var seats = [], laneh = [], width = [];
-    for (i = 0; i < lanes; i++) {
-      seats[i] = Math.ceil(W / slot[i]) + 1;
+      cup[i]   = Math.round(c * SCALE[i]);
+      slot[i]  = cup[i] + PAD;
+      seats[i] = Math.ceil(vw / slot[i]) + 1;
       laneh[i] = laneH(cup[i]);
-      width[i] = W >= vw ? 0 : W;         // 0 = 画面いっぱい
+      // 寄せるのは大きい段だけ。ほかの段は受け皿も持ち手も見えるままにします。
+      zoom[i]  = SCALE[i] > 1 ? 1.02 : 0;
+      width[i] = 0;                       // 0 ＝ 画面いっぱい
     }
-    return { lanes: lanes, cup: cup, slot: slot, seats: seats,
-             width: width, laneh: laneh, trays: true };
+
+    // WebGL の杯をどの段にいくつ置くか。
+    // 作品の数より多くは置きません（同じ作品を 2 つ出すより、空きの席の方が
+    // 「まだ埋まっていない」と分かるためです）。
+    // 大きい段を先に埋め、残りをほかの段で等分します。
+    var want = Math.min(budget, posts.length);
+    var live = [], big = -1;
+    for (i = 0; i < lanes; i++) { live[i] = 0; if (big < 0 && SCALE[i] > 1) big = i; }
+    if (big >= 0) { live[big] = Math.min(seats[big], want); want -= live[big]; }
+    var rest = 0;
+    for (i = 0; i < lanes; i++) if (i !== big) rest++;
+    var each = rest ? Math.floor(want / rest) : 0;
+    for (i = 0; i < lanes; i++) if (i !== big) live[i] = Math.min(seats[i], each);
+
+    return { lanes: lanes, cup: cup, slot: slot, seats: seats, live: live,
+             zoom: zoom, width: width, laneh: laneh, trays: true };
+  }
+
+  // 段の中で、作品の席をどこに置くか。
+  // かたまらないように、n 席のあいだに k 席を等間隔でばらします。
+  function spread(n, k) {
+    var out = [];
+    for (var i = 0; i < n; i++) {
+      out.push(Math.floor(i * k / n) !== Math.floor((i + 1) * k / n));
+    }
+    return out;
   }
 
   function when(ms) {
@@ -209,22 +228,24 @@
     return p;
   }
 
-  function makeSeat(i, laneEl) {
+  // 席ごとのばらつき。無造作に置かれた見た目にします。
+  function scatter(el, i) {
+    el.style.setProperty('--tilt', ((((i * 53) % 7) - 3) * 0.7).toFixed(2) + 'deg');
+  }
+
+  function makeSeat(i, laneEl, zoom) {
     var el = document.createElement('div');
     el.className = 'seat';
-    // 机に無造作に置かれた感じを出すための、席ごとのばらつき
-    // 下へずらすだけにします。上へ持ち上げると段の縁で切れてしまいます。
-    // 5px から始めるのは、杯を 2 度ほど傾けてあるぶん角が上に出るためです。
-    // ずらしの幅は段の高さにそのまま乗るので、5〜11px に抑えています。
-    el.style.setProperty('--tilt', ((((i * 53) % 7) - 3) * 0.7).toFixed(2) + 'deg');
+    scatter(el, i);
 
     el.innerHTML =
       '<div class="seat__cup">' +
-        // data-zoom で寄ります。絵は枠の 53% → 78% になります。
-        // 角砂糖と匙は枠の外（半径 1.2 より先）なので置きません。
-        // 置くと角で欠けて見えます。
-        '<canvas data-cup data-pattern="-1" data-zoom="1.02"' +
-                ' data-spoon="0" data-sugar="0"' +
+        '<canvas data-cup data-pattern="-1"' +
+                (zoom ? ' data-zoom="' + zoom + '"' : '') +
+                // 寄せた段では、角砂糖と匙は枠の外（半径 1.2 より先）なので
+                // 置きません。置くと角で欠けて見えます。
+                ' data-spoon="' + (!zoom && i % 3 === 0 ? 1 : 0) + '"' +
+                ' data-sugar="' + (!zoom && i % 4 === 1 ? 1 : 0) + '"' +
                 ' aria-label="だれかのラテアート。なぞると崩れます。"></canvas>' +
         '<p class="gl-note" hidden></p>' +
       '</div>' +
@@ -251,6 +272,7 @@
       mineEl: el.querySelector('.seat__mine'),
       dropBtn: el.querySelector('.seat__drop'),
       post: null,
+      blank: false,
       x: 0
     };
     if (!seat.cup) return null;
@@ -259,6 +281,23 @@
     seat.heart.addEventListener('click', function () { tapHeart(seat); });
     seat.dropBtn.addEventListener('click', function () { dropPost(seat); });
     return seat;
+  }
+
+  // 空きの席。何も描いていない杯の絵を置くだけです。
+  // WebGL を使わないので、画面を埋めるだけ並べられます。
+  // 絵は本物のシェーダで撮った静止画なので、作品の席と見分けが付きません。
+  function makeBlank(i, laneEl, zoom) {
+    var el = document.createElement('div');
+    el.className = 'seat seat--blank';
+    el.setAttribute('aria-hidden', 'true');
+    scatter(el, i);
+    el.innerHTML =
+      '<div class="seat__cup">' +
+        '<img src="art/cup-blank' + (zoom ? '-near' : '') + '.png" alt="">' +
+      '</div>' +
+      '<div class="seat__foot"></div>';
+    laneEl.appendChild(el);
+    return { el: el, cup: null, post: null, blank: true, x: 0 };
   }
 
   // 自分が描いた一杯かどうかを、席の見た目に反映します。
@@ -278,6 +317,7 @@
   }
 
   function serve(seat, post) {
+    if (seat.blank) return;               // 空きの席は、何も描かないままです
     seat.post = post;
     // どの作品がどの席に出ているかを、札としても残しておきます
     // （同じ作品が重なっていないかを、外から確かめられるように）
@@ -395,8 +435,9 @@
       var s = lane.seats[i];
       s.x += dx;
       // 端から出たら、反対の端へ回して次の一杯を注ぐ
-      while (s.x + lane.slot < -4) { s.x += lane.total; serve(s, pickPost()); }
-      while (s.x > lane.total - lane.slot + 4) { s.x -= lane.total; serve(s, pickPost()); }
+      // 空きの席は回り込んでも注ぎません（袋から引きもしません）
+      while (s.x + lane.slot < -4) { s.x += lane.total; if (!s.blank) serve(s, pickPost()); }
+      while (s.x > lane.total - lane.slot + 4) { s.x -= lane.total; if (!s.blank) serve(s, pickPost()); }
       place(s);
     }
   }
@@ -559,25 +600,33 @@
       var lane = { el: laneEl, dir: dir, seats: [], total: 0, slot: L.slot[li],
                    drag: null, fling: 0, glide: 0 };
       laneEl.addEventListener('keydown', keyLane(lane));
+
+      // 作品の席と空きの席を、かたまらないようにばらして並べます
+      var want = spread(L.seats[li], L.live[li]);
       for (var i = 0; i < L.seats[li]; i++) {
-        var s = makeSeat(made++, laneEl);
-        if (!s) continue;
+        var s = want[i] ? makeSeat(made, laneEl, L.zoom[li])
+                        : makeBlank(made, laneEl, L.zoom[li]);
+        // WebGL が作れなかったときは、空きの席で埋めます
+        if (!s) s = makeBlank(made, laneEl, L.zoom[li]);
+        made++;
+        s.el.style.setProperty('--lift', liftOf(L.cup[li], i) + 'px');
         // 控えの 1 枠は、流れてくる側の外に置きます。
         // 左へ流れる段は右端の外、右へ流れる段は左端の外。
         // 右へ流れる段で右端に置くと、始まってすぐ回り込んでしまいます。
-        s.el.style.setProperty('--lift', liftOf(L.cup[li], made - 1) + 'px');
         s.x = i * L.slot[li] - (dir > 0 ? L.slot[li] : 0);
         place(s);
         lane.seats.push(s);
         seats.push(s);
-        serve(s, pickPost());
+        if (!s.blank) serve(s, pickPost());
       }
       if (!lane.seats.length) { band.removeChild(laneEl); continue; }
       lane.total = lane.seats.length * L.slot[li];
       lanes.push(lane);
     }
 
-    if (!seats.length) {
+    var live = 0;
+    for (var k = 0; k < seats.length; k++) if (!seats[k].blank) live++;
+    if (!live) {
       fail('このブラウザではカップを表示できませんでした。');
       return;
     }
