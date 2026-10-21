@@ -47,7 +47,9 @@
   };
 
   // すべてのカップに効く共通のつまみ
-  var shared = { strength: 1, visc: 0.36, steam: 1 };
+  //  idleFps … 動きの無い杯を、1 秒に何回描き直すか。
+  //            0 にすると毎コマ描きます（間引く前のふるまい）。
+  var shared = { strength: 1, visc: 0.36, steam: 1, idleFps: 20 };
 
   var TAU = Math.PI * 2;
 
@@ -771,6 +773,8 @@
       pouring: false,
       armed: false,
       visible: true,
+      lost: false,     // WebGL の文脈を奪われた（下の「立て直し」を見てください）
+      idle: 0,         // 動きが無いまま過ぎた時間（描き直しを間引くのに使う）
       time: 0,
       energy: 0,
       auto: null,
@@ -1025,7 +1029,7 @@
     }
 
     function tick(dt) {
-      if (!state.visible) return;
+      if (!state.visible || state.lost) return;
       state.time += dt;
       resize();
 
@@ -1062,7 +1066,19 @@
         }
       }
 
-      draw();
+      // 動きの無い杯は、描き直しを 1 秒 20 回までに落とします。
+      // 絵そのものは止まっていて、動いているのは湯気と粒子だけです。
+      // そのために杯の数ぶん毎コマ描いていました
+      // （実測：描画ページの杯 10 個で、ほかの頁と並ぶと 60 → 13 コマ/秒）。
+      var busy = state.pouring || state.energy > 0 || state.auto ||
+                 (state.mode !== 'stir' && state.pointer.down);
+      if (busy || !shared.idleFps) {
+        state.idle = 0;
+        draw();
+      } else {
+        state.idle += dt;
+        if (state.idle >= 1 / shared.idleFps) { state.idle = 0; draw(); }
+      }
 
       state.pointer.px = state.pointer.x;
       state.pointer.py = state.pointer.y;
@@ -1180,11 +1196,55 @@
       }, { rootMargin: '140px 0px' })
     : null;
 
+  // ---- 文脈を奪われたときの立て直し ---------------------------------------
+  //  ブラウザが同時に持てる WebGL は 16 個まで（このサイトで実測）。
+  //  同じ窓に描画ページ（杯 10）と作品ページ（杯 14）が同時にいると越えます。
+  //  実測で 19 個にしたところ、先にいた頁の 3 個が黙って壊され、
+  //  その頁のコマ数も 60.3 → 12.7 に落ちました。
+  //  戻るボタンを押すと、ブラウザは前の頁をしまっておいてそのまま返すことが
+  //  あります。しまわれているあいだに奪われていると、戻ったときに杯が
+  //  白いままになります。奪われた文脈は同じ canvas では作り直せないので、
+  //  黙って白いままにせず、理由を出すか、頁ごと読み込み直します。
+  function watchLoss(cup) {
+    cup.canvas.addEventListener('webglcontextlost', function (e) {
+      // これを呼ばないと、ブラウザは二度とこの canvas に文脈をくれません
+      e.preventDefault();
+      cup.state.lost = true;
+      var note = cup.canvas.parentNode &&
+                 cup.canvas.parentNode.querySelector('.gl-note');
+      if (note) {
+        note.textContent = 'この杯は、ブラウザが WebGL を手放したため消えました。'
+                         + 'ページを読み込み直すと戻ります。';
+        note.hidden = false;
+      }
+    });
+  }
+
+  function anyLost() {
+    for (var i = 0; i < cups.length; i++) {
+      if (cups[i].state.lost) return true;
+      var g2 = null;
+      try { g2 = cups[i].canvas.getContext('webgl2'); } catch (err) {}
+      if (!g2 || g2.isContextLost()) return true;
+    }
+    return false;
+  }
+
+  // しまっておいた頁が戻ってきたとき（戻るボタン）。
+  // 奪われていたら、頁ごと読み込み直します。
+  // 読み込み直しの頁では persisted が偽なので、ここは素通りします
+  //（読み込み直しが繰り返されることはありません）。
+  window.addEventListener('pageshow', function (e) {
+    if (!e.persisted) return;
+    if (anyLost()) location.reload();
+  });
+
   // あとから足した canvas も杯にできます（みんなのラテアートの席がこれを使います）
   function mount(canvas) {
     var c = createCup(canvas);
     if (!c) return null;
     cups.push(c);
+    watchLoss(c);
     if (io) io.observe(canvas);
     else c.arm();
     return c;

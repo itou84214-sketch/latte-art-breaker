@@ -238,6 +238,11 @@
     el.className = 'seat';
     scatter(el, i);
 
+    // 帯に入れるのはハートと取り消しだけです。
+    // 枠はいちばん狭いところで 178px しかないので、ここに日付や札まで
+    // 並べると、字が縦に折り返して段からはみ出します（実測で 70px になり、
+    // 取り消しが半分隠れていました）。
+    // 日付は読み上げ用の説明に、札は杯の上に移しました。
     el.innerHTML =
       '<div class="seat__cup">' +
         '<canvas data-cup data-pattern="-1"' +
@@ -247,6 +252,8 @@
                 ' data-spoon="' + (!zoom && i % 3 === 0 ? 1 : 0) + '"' +
                 ' data-sugar="' + (!zoom && i % 4 === 1 ? 1 : 0) + '"' +
                 ' aria-label="だれかのラテアート。なぞると崩れます。"></canvas>' +
+        // 自分が描いた一杯だけに出ます。ほかの人の一杯には出ません。
+        '<span class="seat__mine" hidden>あなたの一杯</span>' +
         '<p class="gl-note" hidden></p>' +
       '</div>' +
       '<div class="seat__foot">' +
@@ -255,9 +262,6 @@
           '<span class="heart__n">0</span>' +
           '<span class="vh">この一杯にハートを送る</span>' +
         '</button>' +
-        '<span class="seat__when"></span>' +
-        // 自分が描いた一杯だけに出ます。ほかの人の一杯には出ません。
-        '<span class="seat__mine" hidden>あなたの一杯</span>' +
         '<button type="button" class="seat__drop" hidden>取り消す</button>' +
       '</div>';
 
@@ -268,7 +272,6 @@
       cup: window.LatteArt.addCup(el.querySelector('canvas')),
       heart: el.querySelector('.heart'),
       num: el.querySelector('.heart__n'),
-      whenEl: el.querySelector('.seat__when'),
       mineEl: el.querySelector('.seat__mine'),
       dropBtn: el.querySelector('.seat__drop'),
       post: null,
@@ -311,7 +314,10 @@
     seat.dropBtn.hidden = !mine;
     var cv = seat.cup && seat.cup.canvas;
     if (cv) {
+      // 日付は画面には出しません（枠が狭く、字が縦に折り返すため）。
+      // 読み上げる人には、ここで伝えます。
       cv.setAttribute('aria-label', (mine ? 'あなたが描いたラテアート。' : 'だれかのラテアート。')
+                                  + (seat.post ? when(seat.post.created) + 'の一杯。' : '')
                                   + 'なぞると崩れます。');
     }
   }
@@ -324,7 +330,7 @@
     if (post) seat.el.setAttribute('data-post', post.id);
     else seat.el.removeAttribute('data-post');
     // 席を使い回すので、絵が無いときも札とボタンを片づけます
-    markMine(seat);
+    markMine(seat);   // seat.post はもう入っているので、日付も説明に入ります
     if (!post) return;
     var im = new Image();
     im.onload = function () {
@@ -337,7 +343,6 @@
     im.src = post.png;
 
     paintHeart(seat);
-    seat.whenEl.textContent = when(post.created);
   }
 
   function paintHeart(seat) {
