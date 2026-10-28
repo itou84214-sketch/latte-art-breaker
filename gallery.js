@@ -552,6 +552,10 @@
 
   band.addEventListener('pointerdown', function (e) {
     if (e.button) return;                      // 右クリックなどは拾わない
+    // ハートや取り消しの上では机をつかみません。つかむと指を帯が捕まえる
+    // （setPointerCapture）ので、クリックが帯に届いてボタンに届きません
+    // （実測：マウスでハートを押しても click の行き先が desk__band、送信 0 回）。
+    if (e.target && e.target.closest && e.target.closest('button')) return;
     var lane = laneOf(e.target, e.clientY);
     if (!lane) return;
     var finger = e.pointerType === 'touch' || e.pointerType === 'pen';
