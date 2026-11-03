@@ -4,7 +4,7 @@
 <img width="1372" height="875" alt="スクリーンショット 2026-10-05 140442" src="https://github.com/user-attachments/assets/c1c12ae7-32c3-4991-b364-13c830b5892e" />
 
 
-**▶ 動かす … https://dk4ldbc0vohw2.cloudfront.net/**
+**▶ URL … https://dk4ldbc0vohw2.cloudfront.net/**
 
 | | |
 | --- | --- |
